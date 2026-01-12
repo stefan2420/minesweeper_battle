@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "822674575234",
+    "project_id": "minesweep-battle",
+    "storage_bucket": "minesweep-battle.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:822674575234:android:258680df65895b2dd2099b",
+        "android_client_info": {
+          "package_name": "com.minesweeper.minesweeper_battle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQlk5LBQFSS_5YqJelCxMJ4PO1nxu1qsE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
