@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import '../models/game_board.dart';
 import '../models/game_state.dart';
 
@@ -30,6 +31,9 @@ class GameProvider extends ChangeNotifier {
   void revealCell(int row, int col) {
     if (_board == null || _state.isGameOver) return;
 
+    // Haptic feedback for tap
+    HapticFeedback.lightImpact();
+
     // Start game on first click
     if (_state.status == GameStatus.ready) {
       _state = _state.copyWith(
@@ -42,8 +46,10 @@ class GameProvider extends ChangeNotifier {
     final hitMine = _board!.revealCell(row, col);
 
     if (hitMine) {
+      HapticFeedback.heavyImpact();
       _gameOver(won: false);
     } else if (_board!.checkWin()) {
+      HapticFeedback.mediumImpact();
       _gameOver(won: true);
     }
 
@@ -53,15 +59,10 @@ class GameProvider extends ChangeNotifier {
   void toggleFlag(int row, int col) {
     if (_board == null || _state.isGameOver) return;
 
-    // Can flag even before first reveal
-    if (_state.status == GameStatus.ready) {
-      _state = _state.copyWith(
-        status: GameStatus.playing,
-        startTime: DateTime.now(),
-      );
-      _startTimer();
-    }
+    // Haptic feedback for flag toggle
+    HapticFeedback.mediumImpact();
 
+    // Can flag in ready state without starting timer
     _board!.toggleFlag(row, col);
     notifyListeners();
   }

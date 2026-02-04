@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../config/design_tokens.dart';
 import '../../models/game_board.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/battle_provider.dart';
@@ -107,14 +108,14 @@ class _LobbyScreenState extends State<LobbyScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(DesignTokens.spacingL),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Create Room Section
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(DesignTokens.spacingM),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -125,22 +126,22 @@ class _LobbyScreenState extends State<LobbyScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: DesignTokens.spacingM),
                       const Text('Select Difficulty:'),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: DesignTokens.spacingS),
                       SegmentedButton<Difficulty>(
-                        segments: const [
+                        segments: [
                           ButtonSegment(
                             value: Difficulty.beginner,
-                            label: Text('Easy'),
+                            label: Text(Difficulty.beginner.displayName),
                           ),
                           ButtonSegment(
                             value: Difficulty.intermediate,
-                            label: Text('Medium'),
+                            label: Text(Difficulty.intermediate.displayName),
                           ),
                           ButtonSegment(
                             value: Difficulty.expert,
-                            label: Text('Hard'),
+                            label: Text(Difficulty.expert.displayName),
                           ),
                         ],
                         selected: {_selectedDifficulty},
@@ -150,13 +151,19 @@ class _LobbyScreenState extends State<LobbyScreen> {
                           });
                         },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: DesignTokens.spacingM),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: battleProvider.isLoading ? null : _createRoom,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Create Room'),
+                          icon: battleProvider.isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.add),
+                          label: Text(battleProvider.isLoading ? 'Creating...' : 'Create Room'),
                         ),
                       ),
                     ],
@@ -186,7 +193,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
               // Join Room Section
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(DesignTokens.spacingM),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -197,7 +204,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: DesignTokens.spacingM),
                       TextField(
                         controller: _roomCodeController,
                         textCapitalization: TextCapitalization.characters,
@@ -210,13 +217,19 @@ class _LobbyScreenState extends State<LobbyScreen> {
                           counterText: '',
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: DesignTokens.spacingM),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: battleProvider.isLoading ? null : _joinRoom,
-                          icon: const Icon(Icons.login),
-                          label: const Text('Join Room'),
+                          icon: battleProvider.isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.login),
+                          label: Text(battleProvider.isLoading ? 'Joining...' : 'Join Room'),
                         ),
                       ),
                     ],

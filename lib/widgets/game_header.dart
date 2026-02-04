@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/design_tokens.dart';
 import '../models/game_state.dart';
 
 class GameHeader extends StatelessWidget {
@@ -24,40 +25,47 @@ class GameHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacingM, vertical: DesignTokens.spacingS),
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        color: Theme.of(context).colorScheme.surfaceVariant,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Mine counter
+          // Mine counter (clamp to 0 minimum to prevent negative display)
           _buildCounter(
+            context,
             icon: Icons.flag,
-            value: mineCount.toString().padLeft(3, '0'),
-            color: Colors.red,
+            value: mineCount.clamp(0, 999).toString().padLeft(3, '0'),
+            color: mineCount < 0 ? Colors.orange : Colors.red,
           ),
 
           // Face button / Restart
-          GestureDetector(
-            onTap: onRestart,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.yellow.shade200,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey),
-              ),
-              child: Text(
-                _getFaceEmoji(),
-                style: const TextStyle(fontSize: 24),
+          Semantics(
+            label: _getSemanticLabel(),
+            button: true,
+            hint: 'Tap to restart game',
+            child: GestureDetector(
+              onTap: onRestart,
+              child: Container(
+                padding: const EdgeInsets.all(DesignTokens.spacingS),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline),
+                ),
+                child: Text(
+                  _getFaceEmoji(),
+                  style: const TextStyle(fontSize: 24),
+                ),
               ),
             ),
           ),
 
           // Timer
           _buildCounter(
+            context,
             icon: Icons.timer,
             value: _formatTime(elapsedSeconds),
             color: Colors.blue,
@@ -67,25 +75,26 @@ class GameHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildCounter({
+  Widget _buildCounter(
+    BuildContext context, {
     required IconData icon,
     required String value,
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacingS + 4, vertical: DesignTokens.spacingXs),
       decoration: BoxDecoration(
-        color: Colors.black87,
+        color: Theme.of(context).colorScheme.inverseSurface,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         children: [
           Icon(icon, color: color, size: 20),
-          const SizedBox(width: 8),
+          const SizedBox(width: DesignTokens.spacingS),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.red,
+            style: TextStyle(
+              color: color,
               fontSize: 20,
               fontWeight: FontWeight.bold,
               fontFamily: 'monospace',
@@ -104,6 +113,17 @@ class GameHeader extends StatelessWidget {
         return '😵';
       default:
         return '🙂';
+    }
+  }
+
+  String _getSemanticLabel() {
+    switch (status) {
+      case GameStatus.won:
+        return 'Game won';
+      case GameStatus.lost:
+        return 'Game lost';
+      default:
+        return 'Game in progress';
     }
   }
 }

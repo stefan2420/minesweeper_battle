@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>822674575234-bjel56iijb0hb0vk2l54em2mnd2f8ai3.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.822674575234-bjel56iijb0hb0vk2l54em2mnd2f8ai3</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>822674575234-lok5lv5orupvsk8uicg21vt48d39n3sc.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDC_h7zzEO_SzpUSJWYwDpO3jTJwhveU7Q</string>
+	<key>GCM_SENDER_ID</key>
+	<string>822674575234</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.minesweeper.minesweeperBattle</string>
+	<key>PROJECT_ID</key>
+	<string>minesweep-battle</string>
+	<key>STORAGE_BUCKET</key>
+	<string>minesweep-battle.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:822674575234:ios:c59af39487ba12f7d2099b</string>
+</dict>
+</plist>
