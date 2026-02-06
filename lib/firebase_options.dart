@@ -70,5 +70,6 @@ class DefaultFirebaseOptions {
     projectId: 'minesweep-battle',
     storageBucket: 'minesweep-battle.firebasestorage.app',
     iosBundleId: 'com.minesweeper.minesweeperBattle',
+    iosClientId: '822674575234-bjel56iijb0hb0vk2l54em2mnd2f8ai3.apps.googleusercontent.com',
   );
 }
