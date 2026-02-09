@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../config/design_tokens.dart';
 import '../models/game_board.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/game_instructions_dialog.dart';
 import 'game_screen.dart';
 import 'battle/lobby_screen.dart';
 import 'profile_screen.dart';
@@ -19,6 +21,11 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Minesweeper Battle'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'How to Play',
+            onPressed: () => GameInstructionsDialog.show(context),
+          ),
           IconButton(
             icon: const Icon(Icons.leaderboard),
             tooltip: 'Leaderboard',
@@ -43,7 +50,7 @@ class HomeScreen extends StatelessWidget {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(DesignTokens.spacingL),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -56,17 +63,17 @@ class HomeScreen extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: DesignTokens.spacingS),
               if (user != null)
                 Text(
                   'Battle Wins: ${user.stats.battleWins} | Games Won: ${user.stats.gamesWon}',
                   style: TextStyle(
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
                 ),
 
-              const SizedBox(height: 48),
+              const SizedBox(height: DesignTokens.spacingXxl),
 
               // Battle Mode Button
               _MenuButton(
@@ -82,7 +89,7 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: DesignTokens.spacingM),
 
               // Single Player Section
               const Text(
@@ -96,8 +103,8 @@ class HomeScreen extends StatelessWidget {
 
               _MenuButton(
                 icon: Icons.looks_one,
-                title: 'Beginner',
-                subtitle: '9x9 grid, 10 mines',
+                title: Difficulty.beginner.displayName,
+                subtitle: Difficulty.beginner.displayNameWithSize.split('(')[1].replaceAll(')', '') + ', 10 mines',
                 color: Colors.green,
                 onTap: () {
                   Navigator.push(
@@ -111,12 +118,12 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: DesignTokens.spacingS),
 
               _MenuButton(
                 icon: Icons.looks_two,
-                title: 'Intermediate',
-                subtitle: '16x16 grid, 40 mines',
+                title: Difficulty.intermediate.displayName,
+                subtitle: Difficulty.intermediate.displayNameWithSize.split('(')[1].replaceAll(')', '') + ', 40 mines',
                 color: Colors.blue,
                 onTap: () {
                   Navigator.push(
@@ -130,12 +137,12 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: DesignTokens.spacingS),
 
               _MenuButton(
                 icon: Icons.looks_3,
-                title: 'Expert',
-                subtitle: '30x16 grid, 99 mines',
+                title: Difficulty.expert.displayName,
+                subtitle: Difficulty.expert.displayNameWithSize.split('(')[1].replaceAll(')', '') + ', 99 mines',
                 color: Colors.red,
                 onTap: () {
                   Navigator.push(
@@ -188,7 +195,7 @@ class _MenuButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(DesignTokens.spacingM),
           child: Row(
             children: [
               Container(
@@ -214,13 +221,13 @@ class _MenuButton extends StatelessWidget {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        color: Colors.grey.shade600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: Colors.grey.shade400),
+              Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ],
           ),
         ),

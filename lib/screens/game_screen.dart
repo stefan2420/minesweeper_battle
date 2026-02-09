@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/game_board.dart';
 import '../models/game_state.dart';
 import '../providers/game_provider.dart';
@@ -7,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../services/user_service.dart';
 import '../widgets/game_grid.dart';
 import '../widgets/game_header.dart';
+import '../widgets/game_instructions_dialog.dart';
 
 class GameScreen extends StatefulWidget {
   final Difficulty initialDifficulty;
@@ -22,23 +25,60 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   final UserService _userService = UserService();
+  static const String _seenInstructionsKey = 'seen_game_instructions';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<GameProvider>().newGame(widget.initialDifficulty);
+      _checkAndShowInstructions();
     });
+  }
+
+  /// Check if this is the first game and show instructions if needed
+  Future<void> _checkAndShowInstructions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenInstructions = prefs.getBool(_seenInstructionsKey) ?? false;
+
+    if (!hasSeenInstructions && mounted) {
+      await GameInstructionsDialog.show(context);
+      await prefs.setBool(_seenInstructionsKey, true);
+    }
   }
 
   void _onGameEnd(bool won, int time, Difficulty difficulty) async {
     final userId = context.read<AuthProvider>().firebaseUser?.uid;
     if (userId == null) return;
 
-    if (won) {
-      await _userService.recordGameWin(userId, difficulty, time);
-    } else {
-      await _userService.recordGameLoss(userId);
+    try {
+      if (won) {
+        await _userService
+            .recordGameWin(userId, difficulty, time)
+            .timeout(const Duration(seconds: 10));
+      } else {
+        await _userService
+            .recordGameLoss(userId)
+            .timeout(const Duration(seconds: 10));
+      }
+    } on TimeoutException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Save timed out. Stats will sync later.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save stats: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
@@ -48,6 +88,11 @@ class _GameScreenState extends State<GameScreen> {
       appBar: AppBar(
         title: const Text('Minesweeper'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'How to Play',
+            onPressed: () => GameInstructionsDialog.show(context),
+          ),
           PopupMenuButton<Difficulty>(
             icon: const Icon(Icons.settings),
             tooltip: 'Difficulty',

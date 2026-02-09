@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import '../models/battle_session.dart';
 import '../models/game_board.dart';
 import '../models/game_state.dart';
@@ -142,6 +143,9 @@ class BattleProvider extends ChangeNotifier {
   Future<void> revealCell(int row, int col, String playerId) async {
     if (_board == null || _session == null || _gameState.isGameOver) return;
 
+    // Haptic feedback for tap
+    HapticFeedback.lightImpact();
+
     final hitMine = _board!.revealCell(row, col);
 
     // Update progress to server
@@ -153,8 +157,10 @@ class BattleProvider extends ChangeNotifier {
     );
 
     if (hitMine) {
+      HapticFeedback.heavyImpact();
       await _finishGame(playerId, won: false);
     } else if (_board!.checkWin()) {
+      HapticFeedback.mediumImpact();
       await _finishGame(playerId, won: true);
     }
 
@@ -163,6 +169,9 @@ class BattleProvider extends ChangeNotifier {
 
   Future<void> toggleFlag(int row, int col, String playerId) async {
     if (_board == null || _session == null || _gameState.isGameOver) return;
+
+    // Haptic feedback for flag toggle
+    HapticFeedback.mediumImpact();
 
     _board!.toggleFlag(row, col);
 

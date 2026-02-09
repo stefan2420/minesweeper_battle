@@ -4,6 +4,27 @@ import 'cell.dart';
 
 enum Difficulty { beginner, intermediate, expert }
 
+/// Extension to provide consistent difficulty naming across the app
+extension DifficultyExtension on Difficulty {
+  /// Get the display name for this difficulty level
+  String get displayName {
+    switch (this) {
+      case Difficulty.beginner:
+        return 'Beginner';
+      case Difficulty.intermediate:
+        return 'Intermediate';
+      case Difficulty.expert:
+        return 'Expert';
+    }
+  }
+
+  /// Get the display name with board size (e.g., "Beginner (9×9)")
+  String get displayNameWithSize {
+    final config = GameBoardConfig.fromDifficulty(this);
+    return '$displayName (${config.cols}×${config.rows})';
+  }
+}
+
 class GameBoardConfig {
   final int rows;
   final int cols;

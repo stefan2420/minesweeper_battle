@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/design_tokens.dart';
 import '../models/battle_session.dart';
 import '../models/game_board.dart';
 
@@ -18,91 +19,127 @@ class OpponentMiniGrid extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final config = GameBoardConfig.fromDifficulty(difficulty);
     final progress = opponent!.getProgress(difficulty);
     final status = opponent!.status;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _getBorderColor(status),
-          width: 2,
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Opponent name and status
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                _getStatusIcon(status),
-                size: 16,
-                color: _getBorderColor(status),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                opponent!.displayName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(DesignTokens.spacingM),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header: Opponent name and percentage
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      _getStatusIcon(status),
+                      size: 20,
+                      color: _getBorderColor(context, status),
+                    ),
+                    const SizedBox(width: DesignTokens.spacingS),
+                    Text(
+                      opponent!.displayName,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
+                ),
+                Text(
+                  '${(progress * 100).toStringAsFixed(0)}%',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: _getBorderColor(context, status),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DesignTokens.spacingM),
+
+            // Linear progress indicator
+            ClipRRect(
+              borderRadius: BorderRadius.circular(DesignTokens.radiusS),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  _getBorderColor(context, status),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Mini grid visualization
-          SizedBox(
-            width: 80,
-            height: 80 * (config.rows / config.cols),
-            child: CustomPaint(
-              painter: _MiniGridPainter(
-                rows: config.rows,
-                cols: config.cols,
-                revealedPercent: progress,
-                status: status,
-              ),
             ),
-          ),
+            const SizedBox(height: DesignTokens.spacingM),
 
-          const SizedBox(height: 8),
-
-          // Progress percentage
-          Text(
-            '${(progress * 100).toStringAsFixed(1)}%',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: _getBorderColor(status),
+            // Stats row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStat(
+                  context,
+                  Icons.check_circle_outline,
+                  'Revealed',
+                  opponent!.revealedCells.toString(),
+                ),
+                Container(
+                  width: 1,
+                  height: 20,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+                _buildStat(
+                  context,
+                  Icons.flag_outlined,
+                  'Flags',
+                  opponent!.flaggedCells.toString(),
+                ),
+              ],
             ),
-          ),
-
-          // Stats
-          Text(
-            'Revealed: ${opponent!.revealedCells} | Flags: ${opponent!.flaggedCells}',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey.shade600,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Color _getBorderColor(String status) {
+  Widget _buildStat(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 16,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(height: DesignTokens.spacingXs),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _getBorderColor(BuildContext context, String status) {
     switch (status) {
       case 'won':
         return Colors.green;
       case 'lost':
-        return Colors.red;
+        return Theme.of(context).colorScheme.error;
       default:
-        return Colors.blue;
+        return Theme.of(context).colorScheme.primary;
     }
   }
 
@@ -115,65 +152,5 @@ class OpponentMiniGrid extends StatelessWidget {
       default:
         return Icons.play_arrow;
     }
-  }
-}
-
-class _MiniGridPainter extends CustomPainter {
-  final int rows;
-  final int cols;
-  final double revealedPercent;
-  final String status;
-
-  _MiniGridPainter({
-    required this.rows,
-    required this.cols,
-    required this.revealedPercent,
-    required this.status,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cellWidth = size.width / cols;
-    final cellHeight = size.height / rows;
-
-    final hiddenPaint = Paint()..color = Colors.grey.shade400;
-    final revealedPaint = Paint()..color = Colors.grey.shade300;
-    final borderPaint = Paint()
-      ..color = Colors.grey.shade600
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.5;
-
-    // Calculate how many cells are revealed (simplified visualization)
-    final totalCells = rows * cols;
-    final revealedCells = (totalCells * revealedPercent).round();
-
-    int cellIndex = 0;
-    for (int row = 0; row < rows; row++) {
-      for (int col = 0; col < cols; col++) {
-        final rect = Rect.fromLTWH(
-          col * cellWidth,
-          row * cellHeight,
-          cellWidth,
-          cellHeight,
-        );
-
-        // Fill cell
-        canvas.drawRect(
-          rect,
-          cellIndex < revealedCells ? revealedPaint : hiddenPaint,
-        );
-
-        // Draw border
-        canvas.drawRect(rect, borderPaint);
-
-        cellIndex++;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _MiniGridPainter oldDelegate) {
-    return oldDelegate.revealedPercent != revealedPercent ||
-        oldDelegate.status != status;
   }
 }

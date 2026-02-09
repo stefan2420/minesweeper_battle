@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../config/design_tokens.dart';
 import '../../models/battle_session.dart';
 import '../../models/game_board.dart';
 import '../../providers/auth_provider.dart';
@@ -72,7 +73,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(DesignTokens.spacingL),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -80,14 +81,14 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                 Card(
                   color: Theme.of(context).primaryColor.withOpacity(0.1),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(DesignTokens.spacingM),
                     child: Column(
                       children: [
                         const Text(
                           'Room Code',
                           style: TextStyle(fontSize: 14),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: DesignTokens.spacingS),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -99,7 +100,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                                 letterSpacing: 4,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: DesignTokens.spacingS),
                             IconButton(
                               icon: const Icon(Icons.copy),
                               onPressed: () {
@@ -116,17 +117,17 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: DesignTokens.spacingS),
                         Text(
                           'Difficulty: ${_getDifficultyName(session.difficulty)}',
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                         ),
                       ],
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: DesignTokens.spacingXl),
 
                 // Players
                 const Text(
@@ -136,11 +137,15 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: DesignTokens.spacingM),
 
                 // Host
                 _buildPlayerCard(
-                  name: session.players[session.hostId]?.displayName ?? 'Host',
+                  name: _getUniquePlayerName(
+                    session.players[session.hostId]?.displayName ?? 'Host',
+                    true,
+                    opponentPlayer?.displayName,
+                  ),
                   isReady: session.players[session.hostId]?.isReady ?? false,
                   isYou: isHost,
                   isHost: true,
@@ -151,7 +156,11 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                 // Guest
                 if (opponentPlayer != null)
                   _buildPlayerCard(
-                    name: opponentPlayer.displayName,
+                    name: _getUniquePlayerName(
+                      opponentPlayer.displayName,
+                      false,
+                      session.players[session.hostId]?.displayName,
+                    ),
                     isReady: opponentPlayer.isReady,
                     isYou: !isHost,
                     isHost: false,
@@ -182,7 +191,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: DesignTokens.spacingM),
 
                   // Start button (host only, when all ready)
                   if (isHost && session.allPlayersReady)
@@ -209,6 +218,14 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     );
   }
 
+  /// Helper method to get unique player name when both players have same displayName
+  String _getUniquePlayerName(String displayName, bool isHost, String? opponentName) {
+    if (displayName == opponentName && opponentName != null) {
+      return '$displayName (${isHost ? "Host" : "Guest"})';
+    }
+    return displayName;
+  }
+
   Widget _buildPlayerCard({
     required String name,
     required bool isReady,
@@ -218,20 +235,24 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     return Card(
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: isReady ? Colors.green : Colors.grey,
+          backgroundColor: isReady
+            ? Colors.green
+            : Theme.of(context).colorScheme.surfaceVariant,
           child: Icon(
             isReady ? Icons.check : Icons.person,
-            color: Colors.white,
+            color: isReady
+              ? Colors.white
+              : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         title: Row(
           children: [
             Text(name),
             if (isYou)
-              const Text(
+              Text(
                 ' (You)',
                 style: TextStyle(
-                  color: Colors.grey,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
                 ),
               ),
@@ -244,10 +265,12 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                 backgroundColor: Colors.green,
                 labelStyle: TextStyle(color: Colors.white),
               )
-            : const Chip(
-                label: Text('Waiting'),
-                backgroundColor: Colors.grey,
-                labelStyle: TextStyle(color: Colors.white),
+            : Chip(
+                label: const Text('Waiting'),
+                backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                labelStyle: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
       ),
     );
@@ -257,8 +280,11 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     return Card(
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.grey.shade300,
-          child: const Icon(Icons.hourglass_empty),
+          backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+          child: Icon(
+            Icons.hourglass_empty,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         title: const Text('Waiting for opponent...'),
         subtitle: const Text('Share the room code'),
@@ -267,14 +293,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   }
 
   String _getDifficultyName(Difficulty difficulty) {
-    switch (difficulty) {
-      case Difficulty.beginner:
-        return 'Beginner (9x9)';
-      case Difficulty.intermediate:
-        return 'Intermediate (16x16)';
-      case Difficulty.expert:
-        return 'Expert (30x16)';
-    }
+    return difficulty.displayNameWithSize;
   }
 
   Future<bool> _showLeaveDialog() async {
