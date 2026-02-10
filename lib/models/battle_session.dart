@@ -9,9 +9,12 @@ class PlayerState {
   final String? gridData; // Serialized grid (hidden from opponent)
   final int revealedCells;
   final int flaggedCells;
-  final String status; // 'playing', 'won', 'lost'
+  final String status; // 'playing', 'won', 'lost', 'betting', 'bet_success', 'bet_failed'
   final int? finishTime; // Time in seconds when finished
   final bool isReady;
+  final bool isBetting; // True if player chose to bet and continue
+  final DateTime? betStartTime; // When betting phase started (for timeout)
+  final String? betOutcome; // 'success', 'failed', 'declined', null
 
   const PlayerState({
     required this.playerId,
@@ -22,6 +25,9 @@ class PlayerState {
     this.status = 'waiting',
     this.finishTime,
     this.isReady = false,
+    this.isBetting = false,
+    this.betStartTime,
+    this.betOutcome,
   });
 
   Map<String, dynamic> toJson() {
@@ -34,6 +40,9 @@ class PlayerState {
       'status': status,
       'finishTime': finishTime,
       'isReady': isReady,
+      'isBetting': isBetting,
+      'betStartTime': betStartTime != null ? Timestamp.fromDate(betStartTime!) : null,
+      'betOutcome': betOutcome,
     };
   }
 
@@ -47,6 +56,9 @@ class PlayerState {
       status: json['status'] as String? ?? 'waiting',
       finishTime: json['finishTime'] as int?,
       isReady: json['isReady'] as bool? ?? false,
+      isBetting: json['isBetting'] as bool? ?? false,
+      betStartTime: (json['betStartTime'] as Timestamp?)?.toDate(),
+      betOutcome: json['betOutcome'] as String?,
     );
   }
 
@@ -59,6 +71,9 @@ class PlayerState {
     String? status,
     int? finishTime,
     bool? isReady,
+    bool? isBetting,
+    DateTime? betStartTime,
+    String? betOutcome,
   }) {
     return PlayerState(
       playerId: playerId ?? this.playerId,
@@ -69,6 +84,9 @@ class PlayerState {
       status: status ?? this.status,
       finishTime: finishTime ?? this.finishTime,
       isReady: isReady ?? this.isReady,
+      isBetting: isBetting ?? this.isBetting,
+      betStartTime: betStartTime ?? this.betStartTime,
+      betOutcome: betOutcome ?? this.betOutcome,
     );
   }
 

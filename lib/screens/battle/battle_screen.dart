@@ -6,6 +6,8 @@ import '../../providers/battle_provider.dart';
 import '../../widgets/game_grid.dart';
 import '../../widgets/game_header.dart';
 import '../../widgets/opponent_mini_grid.dart';
+import '../../widgets/betting_modal.dart';
+import '../../services/xp_service.dart';
 
 class BattleScreen extends StatefulWidget {
   const BattleScreen({super.key});
@@ -16,6 +18,7 @@ class BattleScreen extends StatefulWidget {
 
 class _BattleScreenState extends State<BattleScreen> {
   bool _dialogShown = false;
+  bool _bettingModalShown = false;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +37,14 @@ class _BattleScreenState extends State<BattleScreen> {
     }
 
     final opponent = session.getOpponent(userId ?? '');
+
+    // Check for betting phase (winner gets betting option)
+    if (battleProvider.isBettingPhase && !_bettingModalShown) {
+      _bettingModalShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showBettingModal(context, battleProvider);
+      });
+    }
 
     // Check for game end
     if (session.status == BattleStatus.finished && !_dialogShown) {
@@ -128,6 +139,33 @@ class _BattleScreenState extends State<BattleScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showBettingModal(BuildContext context, BattleProvider battleProvider) {
+    // Calculate earned XP for display
+    final winnerFinishTime = battleProvider.gameState.elapsedSeconds;
+    final earnedXP = XPService().calculateMatchXP(
+      won: true,
+      finishTimeSeconds: winnerFinishTime,
+      difficulty: battleProvider.session!.difficulty,
+    );
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => BettingModal(
+        earnedXP: earnedXP,
+        onCashOut: () {
+          battleProvider.handleCashOut();
+        },
+        onBet: () {
+          battleProvider.handleBetDecision();
+          setState(() {
+            _bettingModalShown = false; // Reset for potential future bets
+          });
+        },
       ),
     );
   }

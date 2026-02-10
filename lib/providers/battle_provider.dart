@@ -28,11 +28,21 @@ class BattleProvider extends ChangeNotifier {
   int? _pendingRevealedCells;
   int? _pendingFlaggedCells;
 
+  // Betting state
+  bool _isBettingPhase = false;
+  bool _playerDecidedToBet = false;
+  String? _winnerId;
+  String? _loserId;
+  int? _winnerFinishTime;
+  int? _loserFinishTime;
+
   BattleSession? get session => _session;
   GameBoard? get board => _board;
   GameState get gameState => _gameState;
   String? get error => _error;
   bool get isLoading => _isLoading;
+  bool get isBettingPhase => _isBettingPhase;
+  bool get playerDecidedToBet => _playerDecidedToBet;
 
   Future<String?> createRoom({
     required String hostId,
@@ -198,10 +208,20 @@ class BattleProvider extends ChangeNotifier {
 
     if (hitMine) {
       HapticFeedback.heavyImpact();
-      await _finishGame(playerId, won: false);
+      // If betting, this counts as bet failure
+      if (_playerDecidedToBet) {
+        await completeBet(success: false);
+      } else {
+        await _finishGame(playerId, won: false);
+      }
     } else if (_board!.checkWin()) {
       HapticFeedback.mediumImpact();
-      await _finishGame(playerId, won: true);
+      // If betting, this counts as bet success
+      if (_playerDecidedToBet) {
+        await completeBet(success: true);
+      } else {
+        await _finishGame(playerId, won: true);
+      }
     }
 
     notifyListeners();
@@ -239,7 +259,7 @@ class BattleProvider extends ChangeNotifier {
       finishTime: _gameState.elapsedSeconds,
     );
 
-    // Update user stats, ratings, and XP
+    // Update user stats and ratings
     if (won) {
       await _userService.recordBattleWin(playerId);
 
@@ -259,26 +279,97 @@ class BattleProvider extends ChangeNotifier {
           // Continue even if rating update fails
         }
 
-        // Award XP to both players atomically
-        try {
-          final winnerFinishTime = _session!.players[playerId]?.finishTime ?? _gameState.elapsedSeconds;
-          final loserFinishTime = _session!.players[opponentId]?.finishTime ?? _gameState.elapsedSeconds;
+        // Store XP info for later award (after betting decision)
+        _winnerId = playerId;
+        _loserId = opponentId;
+        _winnerFinishTime = _session!.players[playerId]?.finishTime ?? _gameState.elapsedSeconds;
+        _loserFinishTime = _session!.players[opponentId]?.finishTime ?? _gameState.elapsedSeconds;
 
-          await _xpService.awardMatchXP(
-            winnerId: playerId,
-            loserId: opponentId,
-            winnerFinishTime: winnerFinishTime,
-            loserFinishTime: loserFinishTime,
-            difficulty: _session!.difficulty,
-          );
-        } catch (e) {
-          print('Error awarding XP: $e');
-          // Continue even if XP update fails
-        }
+        // Enter betting phase instead of awarding XP immediately
+        // XP will be awarded after winner makes betting decision
+        _isBettingPhase = true;
+        notifyListeners();
       }
     } else {
       await _userService.recordBattleLoss(playerId);
       // Rating and XP updates handled by winner's side
+    }
+  }
+
+  /// Player chose to cash out (safe option)
+  Future<void> handleCashOut() async {
+    if (!_isBettingPhase || _winnerId == null) return;
+
+    _isBettingPhase = false;
+    _playerDecidedToBet = false;
+    notifyListeners();
+
+    // Award normal XP (declined bet)
+    await _awardWinnerXP(betOutcome: 'declined');
+  }
+
+  /// Player chose to bet and continue
+  void handleBetDecision() {
+    if (!_isBettingPhase) return;
+
+    _isBettingPhase = false;
+    _playerDecidedToBet = true;
+
+    // Reset game state to allow continued play
+    _gameState = _gameState.copyWith(
+      status: GameStatus.playing,
+    );
+
+    // Restart timer
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _gameState = _gameState.copyWith(
+        elapsedSeconds: _gameState.elapsedSeconds + 1,
+      );
+      notifyListeners();
+    });
+
+    notifyListeners();
+  }
+
+  /// Handle bet outcome after player continues
+  Future<void> completeBet({required bool success}) async {
+    if (!_playerDecidedToBet || _winnerId == null) return;
+
+    _playerDecidedToBet = false;
+    _timer?.cancel();
+
+    final betOutcome = success ? 'success' : 'failed';
+
+    // Award XP with betting multiplier/penalty
+    await _awardWinnerXP(betOutcome: betOutcome);
+
+    // Update game state
+    _gameState = _gameState.copyWith(
+      status: success ? GameStatus.won : GameStatus.lost,
+    );
+
+    if (!success) {
+      _board!.revealAllMines();
+    }
+
+    notifyListeners();
+  }
+
+  /// Award XP to winner with optional betting outcome
+  Future<void> _awardWinnerXP({required String betOutcome}) async {
+    if (_winnerId == null || _loserId == null) return;
+
+    try {
+      await _xpService.awardMatchXP(
+        winnerId: _winnerId!,
+        loserId: _loserId!,
+        winnerFinishTime: _winnerFinishTime!,
+        loserFinishTime: _loserFinishTime!,
+        difficulty: _session!.difficulty,
+        winnerBetOutcome: betOutcome,
+      );
+    } catch (e) {
+      print('Error awarding winner XP: $e');
     }
   }
 
@@ -290,6 +381,8 @@ class BattleProvider extends ChangeNotifier {
     _session = null;
     _board = null;
     _gameState = const GameState();
+    _isBettingPhase = false;
+    _playerDecidedToBet = false;
     notifyListeners();
   }
 

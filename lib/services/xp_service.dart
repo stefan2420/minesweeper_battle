@@ -13,6 +13,12 @@ class XPService {
   static const int maxPerformanceBonusXP = 50; // Max bonus for fast completion
   static const int minimumMatchDuration = 30; // Seconds - prevents instant farming
 
+  // Betting Constants
+  static const double betSuccessMultiplier = 2.0; // 2x XP for successful bet
+  static const double betFailurePenalty = 0.10; // Keep only 10% XP on bet failure
+  static const int betDecisionTimeout = 10; // Seconds to decide on bet
+  static const int betCompletionTimeout = 180; // 3 minutes to complete after betting
+
   /// Calculate level from total XP
   /// Formula: Level = floor((totalXP / 100) ^ (1/1.5))
   /// Inverse of: XP = 100 * level^1.5
@@ -94,18 +100,44 @@ class XPService {
     return totalXP;
   }
 
+  /// Calculate XP with betting outcome applied
+  /// baseXP: The XP earned from match (before betting)
+  /// betOutcome: 'success', 'failed', or 'declined'
+  int calculateBetXP({
+    required int baseXP,
+    required String betOutcome,
+  }) {
+    switch (betOutcome) {
+      case 'success':
+        // Successful bet: 2x multiplier
+        return (baseXP * betSuccessMultiplier).round();
+
+      case 'failed':
+      case 'timeout':
+        // Failed bet or timeout: Keep only 10%
+        return (baseXP * betFailurePenalty).round();
+
+      case 'declined':
+      default:
+        // No bet or declined: Normal XP
+        return baseXP;
+    }
+  }
+
   /// Award XP to both players after a match and update levels
   /// Call this from the winner's perspective to award XP to both players atomically
+  /// Optional betOutcome for winner to apply betting multipliers/penalties
   Future<void> awardMatchXP({
     required String winnerId,
     required String loserId,
     required int winnerFinishTime,
     required int loserFinishTime,
     required Difficulty difficulty,
+    String? winnerBetOutcome, // 'success', 'failed', 'declined', null
   }) async {
     try {
-      // Calculate XP for both players
-      final winnerXP = calculateMatchXP(
+      // Calculate base XP for both players
+      final winnerBaseXP = calculateMatchXP(
         won: true,
         finishTimeSeconds: winnerFinishTime,
         difficulty: difficulty,
@@ -116,6 +148,14 @@ class XPService {
         finishTimeSeconds: loserFinishTime,
         difficulty: difficulty,
       );
+
+      // Apply betting outcome to winner's XP if applicable
+      final winnerXP = winnerBetOutcome != null
+          ? calculateBetXP(
+              baseXP: winnerBaseXP,
+              betOutcome: winnerBetOutcome,
+            )
+          : winnerBaseXP;
 
       // Fetch current stats to calculate new levels
       final winnerStats = await _getUserStats(winnerId);
@@ -147,7 +187,8 @@ class XPService {
       // Commit both updates atomically
       await batch.commit();
 
-      print('XP awarded: Winner +$winnerXP XP (Level $winnerNewLevel), Loser +$loserXP XP (Level $loserNewLevel)');
+      final betInfo = winnerBetOutcome != null ? ' [Bet: $winnerBetOutcome]' : '';
+      print('XP awarded: Winner +$winnerXP XP$betInfo (Level $winnerNewLevel), Loser +$loserXP XP (Level $loserNewLevel)');
     } catch (e) {
       print('Error awarding XP: $e');
       rethrow;
