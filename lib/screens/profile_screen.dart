@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/rank_tier_helper.dart';
+import '../utils/level_helper.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -66,7 +67,67 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+
+            // Level & XP Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        LevelHelper.buildLevelBadge(
+                          level: user.stats.level,
+                          size: 48,
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Level ${user.stats.level}',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              LevelHelper.getLevelTier(user.stats.level),
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: LevelHelper.getLevelColor(user.stats.level),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: LevelHelper.buildProgressBar(
+                        totalXP: user.stats.totalXP,
+                        height: 12,
+                        showLabel: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Total XP: ${LevelHelper.formatXP(user.stats.totalXP)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
 
             // Battle Stats
             _buildStatSection(

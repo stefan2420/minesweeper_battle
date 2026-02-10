@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/user_service.dart';
 import '../utils/rank_tier_helper.dart';
+import '../utils/level_helper.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -84,21 +85,46 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: medalColor ?? Colors.blue.shade100,
-          child: medalIcon != null
-              ? Icon(medalIcon, color: Colors.white)
-              : Text(
-                  '$rank',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            CircleAvatar(
+              backgroundColor: medalColor ?? Colors.blue.shade100,
+              child: medalIcon != null
+                  ? Icon(medalIcon, color: Colors.white)
+                  : Text(
+                      '$rank',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+            ),
+            Positioned(
+              right: -8,
+              bottom: -4,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: LevelHelper.getLevelColor(user.stats.level),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
                 ),
+                child: Text(
+                  '${user.stats.level}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         title: Text(
           user.displayName,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          'Rating: ${user.stats.eloRating} | W/L: ${user.stats.battleWins}/${user.stats.battleLosses} | WR: ${_calculateWinRate(user.stats)}',
+          'Lvl ${user.stats.level} • Rating: ${user.stats.eloRating} | W/L: ${user.stats.battleWins}/${user.stats.battleLosses} | WR: ${_calculateWinRate(user.stats)}',
         ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,

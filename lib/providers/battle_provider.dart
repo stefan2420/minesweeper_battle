@@ -7,11 +7,13 @@ import '../models/game_state.dart';
 import '../services/battle_service.dart';
 import '../services/user_service.dart';
 import '../services/rating_service.dart';
+import '../services/xp_service.dart';
 
 class BattleProvider extends ChangeNotifier {
   final BattleService _battleService = BattleService();
   final UserService _userService = UserService();
   final RatingService _ratingService = RatingService();
+  final XPService _xpService = XPService();
 
   BattleSession? _session;
   GameBoard? _board;
@@ -237,7 +239,7 @@ class BattleProvider extends ChangeNotifier {
       finishTime: _gameState.elapsedSeconds,
     );
 
-    // Update user stats and ratings
+    // Update user stats, ratings, and XP
     if (won) {
       await _userService.recordBattleWin(playerId);
 
@@ -256,10 +258,27 @@ class BattleProvider extends ChangeNotifier {
           print('Error updating ratings: $e');
           // Continue even if rating update fails
         }
+
+        // Award XP to both players atomically
+        try {
+          final winnerFinishTime = _session!.players[playerId]?.finishTime ?? _gameState.elapsedSeconds;
+          final loserFinishTime = _session!.players[opponentId]?.finishTime ?? _gameState.elapsedSeconds;
+
+          await _xpService.awardMatchXP(
+            winnerId: playerId,
+            loserId: opponentId,
+            winnerFinishTime: winnerFinishTime,
+            loserFinishTime: loserFinishTime,
+            difficulty: _session!.difficulty,
+          );
+        } catch (e) {
+          print('Error awarding XP: $e');
+          // Continue even if XP update fails
+        }
       }
     } else {
       await _userService.recordBattleLoss(playerId);
-      // Rating update handled by winner's side
+      // Rating and XP updates handled by winner's side
     }
   }
 

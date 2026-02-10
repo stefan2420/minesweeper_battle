@@ -9,6 +9,8 @@ class UserStats {
   final int eloRating;
   final int peakEloRating;
   final int rankedGamesPlayed;
+  final int totalXP;
+  final int level;
 
   const UserStats({
     this.gamesPlayed = 0,
@@ -19,6 +21,8 @@ class UserStats {
     this.eloRating = 1200,
     this.peakEloRating = 1200,
     this.rankedGamesPlayed = 0,
+    this.totalXP = 0,
+    this.level = 1,
   });
 
   Map<String, dynamic> toJson() {
@@ -31,6 +35,8 @@ class UserStats {
       'eloRating': eloRating,
       'peakEloRating': peakEloRating,
       'rankedGamesPlayed': rankedGamesPlayed,
+      'totalXP': totalXP,
+      'level': level,
     };
   }
 
@@ -44,6 +50,8 @@ class UserStats {
       eloRating: json['eloRating'] as int? ?? 1200,
       peakEloRating: json['peakEloRating'] as int? ?? 1200,
       rankedGamesPlayed: json['rankedGamesPlayed'] as int? ?? 0,
+      totalXP: json['totalXP'] as int? ?? 0,
+      level: json['level'] as int? ?? 1,
     );
   }
 
@@ -56,6 +64,8 @@ class UserStats {
     int? eloRating,
     int? peakEloRating,
     int? rankedGamesPlayed,
+    int? totalXP,
+    int? level,
   }) {
     return UserStats(
       gamesPlayed: gamesPlayed ?? this.gamesPlayed,
@@ -66,6 +76,8 @@ class UserStats {
       eloRating: eloRating ?? this.eloRating,
       peakEloRating: peakEloRating ?? this.peakEloRating,
       rankedGamesPlayed: rankedGamesPlayed ?? this.rankedGamesPlayed,
+      totalXP: totalXP ?? this.totalXP,
+      level: level ?? this.level,
     );
   }
 }
