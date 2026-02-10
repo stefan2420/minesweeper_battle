@@ -56,6 +56,34 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void chordCell(int row, int col) {
+    if (_board == null || _state.isGameOver) return;
+
+    // Haptic feedback for chord
+    HapticFeedback.mediumImpact();
+
+    // Start game on first chord (though unlikely)
+    if (_state.status == GameStatus.ready) {
+      _state = _state.copyWith(
+        status: GameStatus.playing,
+        startTime: DateTime.now(),
+      );
+      _startTimer();
+    }
+
+    final hitMine = _board!.chordCell(row, col);
+
+    if (hitMine) {
+      HapticFeedback.heavyImpact();
+      _gameOver(won: false);
+    } else if (_board!.checkWin()) {
+      HapticFeedback.mediumImpact();
+      _gameOver(won: true);
+    }
+
+    notifyListeners();
+  }
+
   void toggleFlag(int row, int col) {
     if (_board == null || _state.isGameOver) return;
 

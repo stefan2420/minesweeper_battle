@@ -195,6 +195,35 @@ class GameBoard {
     }
   }
 
+  /// Chord clicking: Reveals all unflagged neighbors if enough flags are placed
+  /// Returns true if any mine was hit during chording
+  bool chordCell(int row, int col) {
+    if (!isValidCell(row, col)) return false;
+
+    final cell = grid[row][col];
+
+    // Can only chord on revealed cells with numbers
+    if (!cell.isRevealed || cell.adjacentMines == 0) return false;
+
+    // Count flagged neighbors
+    final neighbors = getNeighbors(row, col);
+    final flaggedNeighbors = neighbors.where((n) => n.isFlagged).length;
+
+    // Only chord if flagged count matches adjacent mines count
+    if (flaggedNeighbors != cell.adjacentMines) return false;
+
+    // Reveal all unflagged neighbors
+    bool hitMine = false;
+    for (final neighbor in neighbors) {
+      if (!neighbor.isRevealed && !neighbor.isFlagged) {
+        final result = revealCell(neighbor.row, neighbor.col);
+        if (result) hitMine = true;
+      }
+    }
+
+    return hitMine;
+  }
+
   void revealAllMines() {
     for (int row = 0; row < rows; row++) {
       for (int col = 0; col < cols; col++) {

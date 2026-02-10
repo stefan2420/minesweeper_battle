@@ -155,7 +155,16 @@ class _GameScreenState extends State<GameScreen> {
                     child: GameGrid(
                       board: board,
                       gameOver: state.isGameOver,
-                      onCellTap: (row, col) => gameProvider.revealCell(row, col),
+                      onCellTap: (row, col) {
+                        final cell = board.getCell(row, col);
+                        // If cell is already revealed with a number, chord it
+                        // Otherwise, reveal it normally
+                        if (cell.isRevealed && cell.adjacentMines > 0) {
+                          gameProvider.chordCell(row, col);
+                        } else {
+                          gameProvider.revealCell(row, col);
+                        }
+                      },
                       onCellLongPress: (row, col) => gameProvider.toggleFlag(row, col),
                     ),
                   ),

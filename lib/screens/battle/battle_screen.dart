@@ -113,7 +113,14 @@ class _BattleScreenState extends State<BattleScreen> {
                         session.status == BattleStatus.finished,
                     onCellTap: (row, col) {
                       if (userId != null) {
-                        battleProvider.revealCell(row, col, userId);
+                        final cell = board.getCell(row, col);
+                        // If cell is already revealed with a number, chord it
+                        // Otherwise, reveal it normally
+                        if (cell.isRevealed && cell.adjacentMines > 0) {
+                          battleProvider.chordCell(row, col, userId);
+                        } else {
+                          battleProvider.revealCell(row, col, userId);
+                        }
                       }
                     },
                     onCellLongPress: (row, col) {

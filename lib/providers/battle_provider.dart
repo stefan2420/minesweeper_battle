@@ -227,6 +227,38 @@ class BattleProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> chordCell(int row, int col, String playerId) async {
+    if (_board == null || _session == null || _gameState.isGameOver) return;
+
+    // Haptic feedback for chord
+    HapticFeedback.mediumImpact();
+
+    final hitMine = _board!.chordCell(row, col);
+
+    // Schedule debounced progress update to server
+    _scheduleProgressUpdate(playerId);
+
+    if (hitMine) {
+      HapticFeedback.heavyImpact();
+      // If betting, this counts as bet failure
+      if (_playerDecidedToBet) {
+        await completeBet(success: false);
+      } else {
+        await _finishGame(playerId, won: false);
+      }
+    } else if (_board!.checkWin()) {
+      HapticFeedback.mediumImpact();
+      // If betting, this counts as bet success
+      if (_playerDecidedToBet) {
+        await completeBet(success: true);
+      } else {
+        await _finishGame(playerId, won: true);
+      }
+    }
+
+    notifyListeners();
+  }
+
   Future<void> toggleFlag(int row, int col, String playerId) async {
     if (_board == null || _session == null || _gameState.isGameOver) return;
 
