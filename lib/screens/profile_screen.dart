@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../utils/rank_tier_helper.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -73,6 +74,19 @@ class ProfileScreen extends StatelessWidget {
               icon: Icons.flash_on,
               color: Colors.orange,
               stats: [
+                _StatItem(
+                  label: 'Rating',
+                  value: '${user.stats.eloRating}',
+                  color: RankTierHelper.getTierColor(user.stats.eloRating),
+                ),
+                _StatItem(
+                  label: 'Rank',
+                  value: RankTierHelper.getTierName(user.stats.eloRating),
+                ),
+                _StatItem(
+                  label: 'Peak Rating',
+                  value: '${user.stats.peakEloRating}',
+                ),
                 _StatItem(label: 'Wins', value: '${user.stats.battleWins}'),
                 _StatItem(label: 'Losses', value: '${user.stats.battleLosses}'),
                 _StatItem(
@@ -170,9 +184,10 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     Text(
                       stat.value,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
+                        color: stat.color,
                       ),
                     ),
                     Text(
@@ -206,6 +221,7 @@ class ProfileScreen extends StatelessWidget {
 class _StatItem {
   final String label;
   final String value;
+  final Color? color;
 
-  const _StatItem({required this.label, required this.value});
+  const _StatItem({required this.label, required this.value, this.color});
 }

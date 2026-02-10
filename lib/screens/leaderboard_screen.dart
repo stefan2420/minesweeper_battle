@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/user_service.dart';
+import '../utils/rank_tier_helper.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -97,23 +98,34 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          'Games: ${user.stats.gamesPlayed} | Win rate: ${_calculateWinRate(user.stats)}',
+          'Rating: ${user.stats.eloRating} | W/L: ${user.stats.battleWins}/${user.stats.battleLosses} | WR: ${_calculateWinRate(user.stats)}',
         ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(
-              '${user.stats.battleWins}',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  RankTierHelper.getTierIcon(user.stats.eloRating),
+                  color: RankTierHelper.getTierColor(user.stats.eloRating),
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${user.stats.eloRating}',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: RankTierHelper.getTierColor(user.stats.eloRating),
+                  ),
+                ),
+              ],
             ),
-            const Text(
-              'wins',
-              style: TextStyle(fontSize: 12),
+            Text(
+              RankTierHelper.getTierName(user.stats.eloRating),
+              style: const TextStyle(fontSize: 12),
             ),
           ],
         ),

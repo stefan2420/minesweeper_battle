@@ -75,7 +75,7 @@ class UserService {
 
   Future<List<UserModel>> getLeaderboard({int limit = 20}) async {
     final snapshot = await _usersCollection
-        .orderBy('stats.battleWins', descending: true)
+        .orderBy('stats.eloRating', descending: true)
         .limit(limit)
         .get();
 

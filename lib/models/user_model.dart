@@ -6,6 +6,9 @@ class UserStats {
   final Map<String, int?> bestTimes; // beginner, intermediate, expert
   final int battleWins;
   final int battleLosses;
+  final int eloRating;
+  final int peakEloRating;
+  final int rankedGamesPlayed;
 
   const UserStats({
     this.gamesPlayed = 0,
@@ -13,6 +16,9 @@ class UserStats {
     this.bestTimes = const {},
     this.battleWins = 0,
     this.battleLosses = 0,
+    this.eloRating = 1200,
+    this.peakEloRating = 1200,
+    this.rankedGamesPlayed = 0,
   });
 
   Map<String, dynamic> toJson() {
@@ -22,6 +28,9 @@ class UserStats {
       'bestTimes': bestTimes,
       'battleWins': battleWins,
       'battleLosses': battleLosses,
+      'eloRating': eloRating,
+      'peakEloRating': peakEloRating,
+      'rankedGamesPlayed': rankedGamesPlayed,
     };
   }
 
@@ -32,6 +41,9 @@ class UserStats {
       bestTimes: Map<String, int?>.from(json['bestTimes'] as Map? ?? {}),
       battleWins: json['battleWins'] as int? ?? 0,
       battleLosses: json['battleLosses'] as int? ?? 0,
+      eloRating: json['eloRating'] as int? ?? 1200,
+      peakEloRating: json['peakEloRating'] as int? ?? 1200,
+      rankedGamesPlayed: json['rankedGamesPlayed'] as int? ?? 0,
     );
   }
 
@@ -41,6 +53,9 @@ class UserStats {
     Map<String, int?>? bestTimes,
     int? battleWins,
     int? battleLosses,
+    int? eloRating,
+    int? peakEloRating,
+    int? rankedGamesPlayed,
   }) {
     return UserStats(
       gamesPlayed: gamesPlayed ?? this.gamesPlayed,
@@ -48,6 +63,9 @@ class UserStats {
       bestTimes: bestTimes ?? this.bestTimes,
       battleWins: battleWins ?? this.battleWins,
       battleLosses: battleLosses ?? this.battleLosses,
+      eloRating: eloRating ?? this.eloRating,
+      peakEloRating: peakEloRating ?? this.peakEloRating,
+      rankedGamesPlayed: rankedGamesPlayed ?? this.rankedGamesPlayed,
     );
   }
 }

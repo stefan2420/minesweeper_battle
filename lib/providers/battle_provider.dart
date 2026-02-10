@@ -6,10 +6,12 @@ import '../models/game_board.dart';
 import '../models/game_state.dart';
 import '../services/battle_service.dart';
 import '../services/user_service.dart';
+import '../services/rating_service.dart';
 
 class BattleProvider extends ChangeNotifier {
   final BattleService _battleService = BattleService();
   final UserService _userService = UserService();
+  final RatingService _ratingService = RatingService();
 
   BattleSession? _session;
   GameBoard? _board;
@@ -235,11 +237,29 @@ class BattleProvider extends ChangeNotifier {
       finishTime: _gameState.elapsedSeconds,
     );
 
-    // Update user stats
+    // Update user stats and ratings
     if (won) {
       await _userService.recordBattleWin(playerId);
+
+      // Determine opponent ID
+      final opponentId = _session!.players.keys
+          .firstWhere((id) => id != playerId, orElse: () => '');
+
+      if (opponentId.isNotEmpty) {
+        // Update Elo ratings atomically
+        try {
+          await _ratingService.updateRatings(
+            winnerId: playerId,
+            loserId: opponentId,
+          );
+        } catch (e) {
+          print('Error updating ratings: $e');
+          // Continue even if rating update fails
+        }
+      }
     } else {
       await _userService.recordBattleLoss(playerId);
+      // Rating update handled by winner's side
     }
   }
 
