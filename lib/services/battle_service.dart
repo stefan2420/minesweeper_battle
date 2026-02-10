@@ -90,21 +90,30 @@ class BattleService {
   Future<void> setPlayerReady(String roomCode, String playerId, bool ready) async {
     final docRef = _roomsCollection.doc(roomCode);
 
-    await _firestore.runTransaction((transaction) async {
-      final doc = await transaction.get(docRef);
-      if (!doc.exists) return;
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final doc = await transaction.get(docRef);
+        if (!doc.exists) {
+          throw Exception('Room not found');
+        }
 
-      final session = BattleSession.fromJson(doc.data()!);
-      final updatedPlayers = Map<String, PlayerState>.from(session.players);
+        final session = BattleSession.fromJson(doc.data()!);
+        final updatedPlayers = Map<String, PlayerState>.from(session.players);
 
-      if (updatedPlayers.containsKey(playerId)) {
+        if (!updatedPlayers.containsKey(playerId)) {
+          throw Exception('Player $playerId not found in room');
+        }
+
         updatedPlayers[playerId] = updatedPlayers[playerId]!.copyWith(isReady: ready);
-      }
 
-      transaction.update(docRef, {
-        'players': updatedPlayers.map((k, v) => MapEntry(k, v.toJson())),
+        transaction.update(docRef, {
+          'players': updatedPlayers.map((k, v) => MapEntry(k, v.toJson())),
+        });
       });
-    });
+    } catch (e) {
+      print('Failed to set player ready status: $e');
+      rethrow;
+    }
   }
 
   Future<void> startGame(String roomCode) async {
@@ -138,11 +147,33 @@ class BattleService {
     required int flaggedCells,
     String? gridData,
   }) async {
-    await _roomsCollection.doc(roomCode).update({
-      'players.$playerId.revealedCells': revealedCells,
-      'players.$playerId.flaggedCells': flaggedCells,
-      if (gridData != null) 'players.$playerId.gridData': gridData,
-    });
+    final docRef = _roomsCollection.doc(roomCode);
+
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final doc = await transaction.get(docRef);
+        if (!doc.exists) {
+          throw Exception('Room not found');
+        }
+
+        final session = BattleSession.fromJson(doc.data()!);
+        final player = session.players[playerId];
+
+        if (player == null) {
+          throw Exception('Player not found in room');
+        }
+
+        // Use field-level updates to avoid overwriting concurrent changes
+        transaction.update(docRef, {
+          'players.$playerId.revealedCells': revealedCells,
+          'players.$playerId.flaggedCells': flaggedCells,
+          if (gridData != null) 'players.$playerId.gridData': gridData,
+        });
+      });
+    } catch (e) {
+      print('Failed to update player progress: $e');
+      rethrow;
+    }
   }
 
   Future<void> setPlayerFinished({

@@ -19,6 +19,11 @@ class BattleProvider extends ChangeNotifier {
   String? _error;
   bool _isLoading = false;
 
+  // Debouncing for progress updates
+  Timer? _progressUpdateTimer;
+  int? _pendingRevealedCells;
+  int? _pendingFlaggedCells;
+
   BattleSession? get session => _session;
   GameBoard? get board => _board;
   GameState get gameState => _gameState;
@@ -109,8 +114,19 @@ class BattleProvider extends ChangeNotifier {
   }
 
   Future<void> setReady(String playerId, bool ready) async {
-    if (_session == null) return;
-    await _battleService.setPlayerReady(_session!.roomCode, playerId, ready);
+    if (_session == null) {
+      _error = 'No active session';
+      notifyListeners();
+      throw Exception('No active session');
+    }
+
+    try {
+      await _battleService.setPlayerReady(_session!.roomCode, playerId, ready);
+    } catch (e) {
+      _error = 'Failed to update ready status: $e';
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> startGame() async {
@@ -140,6 +156,31 @@ class BattleProvider extends ChangeNotifier {
     });
   }
 
+  void _scheduleProgressUpdate(String playerId) {
+    if (_session == null || _board == null) return;
+
+    // Store latest values
+    _pendingRevealedCells = _board!.revealedCount;
+    _pendingFlaggedCells = _board!.flaggedCount;
+
+    // Cancel existing timer
+    _progressUpdateTimer?.cancel();
+
+    // Schedule update after 300ms of no activity
+    _progressUpdateTimer = Timer(const Duration(milliseconds: 300), () {
+      if (_pendingRevealedCells != null && _pendingFlaggedCells != null) {
+        _battleService.updatePlayerProgress(
+          roomCode: _session!.roomCode,
+          playerId: playerId,
+          revealedCells: _pendingRevealedCells!,
+          flaggedCells: _pendingFlaggedCells!,
+        );
+        _pendingRevealedCells = null;
+        _pendingFlaggedCells = null;
+      }
+    });
+  }
+
   Future<void> revealCell(int row, int col, String playerId) async {
     if (_board == null || _session == null || _gameState.isGameOver) return;
 
@@ -148,13 +189,8 @@ class BattleProvider extends ChangeNotifier {
 
     final hitMine = _board!.revealCell(row, col);
 
-    // Update progress to server
-    await _battleService.updatePlayerProgress(
-      roomCode: _session!.roomCode,
-      playerId: playerId,
-      revealedCells: _board!.revealedCount,
-      flaggedCells: _board!.flaggedCount,
-    );
+    // Schedule debounced progress update to server
+    _scheduleProgressUpdate(playerId);
 
     if (hitMine) {
       HapticFeedback.heavyImpact();
@@ -175,12 +211,8 @@ class BattleProvider extends ChangeNotifier {
 
     _board!.toggleFlag(row, col);
 
-    await _battleService.updatePlayerProgress(
-      roomCode: _session!.roomCode,
-      playerId: playerId,
-      revealedCells: _board!.revealedCount,
-      flaggedCells: _board!.flaggedCount,
-    );
+    // Schedule debounced progress update to server
+    _scheduleProgressUpdate(playerId);
 
     notifyListeners();
   }
@@ -236,6 +268,7 @@ class BattleProvider extends ChangeNotifier {
   @override
   void dispose() {
     _timer?.cancel();
+    _progressUpdateTimer?.cancel();
     _sessionSubscription?.cancel();
     super.dispose();
   }

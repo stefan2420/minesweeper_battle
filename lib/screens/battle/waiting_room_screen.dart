@@ -17,6 +17,7 @@ class WaitingRoomScreen extends StatefulWidget {
 
 class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   bool _navigated = false;
+  bool _isTogglingReady = false;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +46,6 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
 
     final isHost = session.hostId == userId;
     final myPlayer = session.players[userId];
-    final opponentPlayer = session.getOpponent(userId ?? '');
 
     return PopScope(
       canPop: false,
@@ -144,7 +144,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                   name: _getUniquePlayerName(
                     session.players[session.hostId]?.displayName ?? 'Host',
                     true,
-                    opponentPlayer?.displayName,
+                    session.guestId != null ? session.players[session.guestId]?.displayName : null,
                   ),
                   isReady: session.players[session.hostId]?.isReady ?? false,
                   isYou: isHost,
@@ -154,38 +154,134 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                 const SizedBox(height: 12),
 
                 // Guest
-                if (opponentPlayer != null)
-                  _buildPlayerCard(
-                    name: _getUniquePlayerName(
-                      opponentPlayer.displayName,
-                      false,
-                      session.players[session.hostId]?.displayName,
-                    ),
-                    isReady: opponentPlayer.isReady,
-                    isYou: !isHost,
-                    isHost: false,
-                  )
-                else
+                if (session.guestId != null) ...[
+                  if (session.players[session.guestId] != null)
+                    _buildPlayerCard(
+                      name: _getUniquePlayerName(
+                        session.players[session.guestId]!.displayName,
+                        false,
+                        session.players[session.hostId]?.displayName,
+                      ),
+                      isReady: session.players[session.guestId]!.isReady,
+                      isYou: session.guestId == userId,
+                      isHost: false,
+                    )
+                  else
+                    _buildWaitingCard(),
+                ] else
                   _buildWaitingCard(),
 
                 const Spacer(),
+
+                // Show banner when opponent is ready but you're not
+                if (session.isFull) ...[
+                  Builder(
+                    builder: (context) {
+                      final guestPlayer = session.players[session.guestId];
+                      final hostPlayer = session.players[session.hostId];
+                      final opponentIsReady = (isHost && guestPlayer?.isReady == true) ||
+                                             (!isHost && hostPlayer?.isReady == true);
+                      final youAreReady = myPlayer?.isReady == true;
+
+                      if (opponentIsReady && !youAreReady) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.green, width: 2),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.check_circle, color: Colors.green),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Your opponent is ready! Click Ready when you\'re set.',
+                                  style: TextStyle(color: Colors.green, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      // Show waiting message when both are ready but host hasn't started
+                      if (session.allPlayersReady && !isHost) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue, width: 2),
+                          ),
+                          child: const Row(
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Both players ready! Waiting for host to start the game...',
+                                  style: TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ],
 
                 // Ready button
                 if (session.isFull) ...[
                   SizedBox(
                     width: double.infinity,
                     height: 56,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        final currentReady = myPlayer?.isReady ?? false;
-                        battleProvider.setReady(userId!, !currentReady);
+                    child: ElevatedButton.icon(
+                      onPressed: _isTogglingReady ? null : () async {
+                        setState(() => _isTogglingReady = true);
+                        try {
+                          final currentReady = myPlayer?.isReady ?? false;
+                          await battleProvider.setReady(userId!, !currentReady);
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Failed to update ready status. Please try again.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _isTogglingReady = false);
+                        }
                       },
+                      icon: _isTogglingReady
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Icon(myPlayer?.isReady == true ? Icons.check_circle : Icons.radio_button_unchecked),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: myPlayer?.isReady == true
-                            ? Colors.green
+                            ? Colors.green[700]
                             : Theme.of(context).primaryColor,
+                        foregroundColor: Colors.white,
                       ),
-                      child: Text(
+                      label: Text(
                         myPlayer?.isReady == true ? 'Ready!' : 'Click when Ready',
                         style: const TextStyle(fontSize: 18),
                       ),
@@ -197,15 +293,18 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                   if (isHost && session.allPlayersReady)
                     SizedBox(
                       width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
+                      height: 64,
+                      child: ElevatedButton.icon(
                         onPressed: () => battleProvider.startGame(),
+                        icon: const Icon(Icons.play_arrow, size: 28),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: Colors.green[600],
+                          foregroundColor: Colors.white,
+                          elevation: 4,
                         ),
-                        child: const Text(
+                        label: const Text(
                           'Start Game!',
-                          style: TextStyle(fontSize: 18),
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
