@@ -15,6 +15,42 @@ class BattleService {
     return List.generate(6, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
+  /// Validates progress update values to prevent invalid data
+  void _validateProgressUpdate({
+    required Difficulty difficulty,
+    required int revealedCells,
+    required int flaggedCells,
+    int? finishTime,
+  }) {
+    final config = GameBoardConfig.fromDifficulty(difficulty);
+    final maxCells = config.rows * config.cols;
+    final maxMines = config.mines;
+
+    // Validate revealedCells
+    if (revealedCells < 0 || revealedCells > maxCells) {
+      throw ArgumentError(
+        'Invalid revealedCells: $revealedCells. Must be between 0 and $maxCells',
+      );
+    }
+
+    // Validate flaggedCells
+    if (flaggedCells < 0 || flaggedCells > maxMines) {
+      throw ArgumentError(
+        'Invalid flaggedCells: $flaggedCells. Must be between 0 and $maxMines',
+      );
+    }
+
+    // Validate finishTime if provided
+    if (finishTime != null) {
+      const maxTime = 86400; // 24 hours in seconds
+      if (finishTime < 0 || finishTime > maxTime) {
+        throw ArgumentError(
+          'Invalid finishTime: $finishTime. Must be between 0 and $maxTime',
+        );
+      }
+    }
+  }
+
   Future<BattleSession> createRoom({
     required String hostId,
     required String hostDisplayName,
@@ -57,18 +93,19 @@ class BattleService {
     return await _firestore.runTransaction((transaction) async {
       final doc = await transaction.get(docRef);
 
+      // Use generic error message to prevent room enumeration
       if (!doc.exists) {
-        throw Exception('Room not found');
+        throw Exception('Cannot join room');
       }
 
       final session = BattleSession.fromJson(doc.data()!);
 
       if (session.guestId != null) {
-        throw Exception('Room is full');
+        throw Exception('Cannot join room');
       }
 
       if (session.status != BattleStatus.waiting) {
-        throw Exception('Game already started');
+        throw Exception('Cannot join room');
       }
 
       final updatedPlayers = Map<String, PlayerState>.from(session.players);
@@ -163,6 +200,13 @@ class BattleService {
           throw Exception('Player not found in room');
         }
 
+        // Validate progress update values
+        _validateProgressUpdate(
+          difficulty: session.difficulty,
+          revealedCells: revealedCells,
+          flaggedCells: flaggedCells,
+        );
+
         // Use field-level updates to avoid overwriting concurrent changes
         transaction.update(docRef, {
           'players.$playerId.revealedCells': revealedCells,
@@ -189,6 +233,14 @@ class BattleService {
       if (!doc.exists) return;
 
       final session = BattleSession.fromJson(doc.data()!);
+
+      // Validate finish time
+      _validateProgressUpdate(
+        difficulty: session.difficulty,
+        revealedCells: 0, // Not validating these here
+        flaggedCells: 0,
+        finishTime: finishTime,
+      );
 
       // Update player status
       transaction.update(docRef, {

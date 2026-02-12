@@ -1,0 +1,243 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================================
+    // HELPER FUNCTIONS
+    // ============================================================================
+
+    // Authentication check
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user is a participant in the battle room
+    function isParticipant() {
+      return isAuthenticated() &&
+             (request.auth.uid == resource.data.hostId ||
+              request.auth.uid == resource.data.guestId);
+    }
+
+    // Validate display name format
+    function isValidDisplayName(name) {
+      return name is string &&
+             name.size() >= 1 &&
+             name.size() <= 50 &&
+             !name.matches('.*<.*>.*'); // No HTML tags
+    }
+
+    // Validate room code format (6 chars, A-Z0-9)
+    function isValidRoomCode(code) {
+      return code is string &&
+             code.size() == 6 &&
+             code.matches('[A-Z0-9]{6}');
+    }
+
+    // Validate difficulty level
+    function isValidDifficulty(diff) {
+      return diff in ['beginner', 'intermediate', 'expert'];
+    }
+
+    // Validate battle status
+    function isValidBattleStatus(status) {
+      return status in ['waiting', 'playing', 'finished'];
+    }
+
+    // Validate player status
+    function isValidPlayerStatus(status) {
+      return status in ['waiting', 'playing', 'won', 'lost', 'betting', 'bet_success', 'bet_failed'];
+    }
+
+    // Check if immutable fields haven't changed
+    function immutableFieldsUnchanged() {
+      return request.resource.data.roomCode == resource.data.roomCode &&
+             request.resource.data.hostId == resource.data.hostId &&
+             request.resource.data.createdAt == resource.data.createdAt &&
+             request.resource.data.difficulty == resource.data.difficulty;
+    }
+
+    // Get max cells based on difficulty
+    function getMaxCells(difficulty) {
+      return difficulty == 'beginner' ? 81 :    // 9x9
+             difficulty == 'intermediate' ? 256 : // 16x16
+             480; // expert: 16x30
+    }
+
+    // Get max mines based on difficulty
+    function getMaxMines(difficulty) {
+      return difficulty == 'beginner' ? 10 :
+             difficulty == 'intermediate' ? 40 :
+             99; // expert
+    }
+
+    // Validate numeric bounds for player progress
+    function isValidProgress(data, difficulty) {
+      let maxCells = getMaxCells(difficulty);
+      let maxMines = getMaxMines(difficulty);
+
+      return data.revealedCells >= 0 &&
+             data.revealedCells <= maxCells &&
+             data.flaggedCells >= 0 &&
+             data.flaggedCells <= maxMines &&
+             (!('finishTime' in data) || (data.finishTime >= 0 && data.finishTime <= 86400));
+    }
+
+    // Validate player update only touches allowed fields
+    function validatePlayerUpdate(playerId) {
+      let playerPath = 'players.' + playerId;
+      let oldPlayer = resource.data.players[playerId];
+      let newPlayer = request.resource.data.players[playerId];
+
+      // Player can only update their own state
+      return request.auth.uid == playerId &&
+             // Validate progress bounds
+             isValidProgress(newPlayer, resource.data.difficulty) &&
+             // Validate status if changed
+             (!('status' in newPlayer) || isValidPlayerStatus(newPlayer.status)) &&
+             // PlayerId and displayName cannot change
+             newPlayer.playerId == oldPlayer.playerId &&
+             newPlayer.displayName == oldPlayer.displayName;
+    }
+
+    // ============================================================================
+    // USERS COLLECTION
+    // ============================================================================
+
+    match /users/{userId} {
+      // Users can read and write only their own data
+      allow read: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                      isValidDisplayName(request.resource.data.displayName) &&
+                      request.resource.data.id == userId &&
+                      request.resource.data.email is string &&
+                      request.resource.data.createdAt is timestamp;
+
+      allow update: if isOwner(userId) &&
+                      // Immutable fields
+                      request.resource.data.id == resource.data.id &&
+                      request.resource.data.createdAt == resource.data.createdAt &&
+                      // Display name validation if changed
+                      (!('displayName' in request.resource.data) ||
+                       isValidDisplayName(request.resource.data.displayName)) &&
+                      // Stats can only increase (monotonic)
+                      (!('stats' in request.resource.data) ||
+                       (request.resource.data.stats.gamesPlayed >= resource.data.stats.gamesPlayed &&
+                        request.resource.data.stats.gamesWon >= resource.data.stats.gamesWon &&
+                        request.resource.data.stats.battleWins >= resource.data.stats.battleWins &&
+                        request.resource.data.stats.battleLosses >= resource.data.stats.battleLosses));
+
+      allow delete: if isOwner(userId);
+    }
+
+    // Leaderboard queries (read-only, limited)
+    match /users/{userId} {
+      allow list: if isAuthenticated() &&
+                    request.query.limit <= 100;
+    }
+
+    // ============================================================================
+    // BATTLE ROOMS COLLECTION
+    // ============================================================================
+
+    match /battleRooms/{roomCode} {
+
+      // Read: Only participants can read the room
+      allow read: if isAuthenticated() && isParticipant();
+
+      // Create: Any authenticated user can create a room
+      allow create: if isAuthenticated() &&
+                      request.resource.data.hostId == request.auth.uid &&
+                      isValidRoomCode(request.resource.data.roomCode) &&
+                      isValidDifficulty(request.resource.data.difficulty) &&
+                      isValidBattleStatus(request.resource.data.status) &&
+                      request.resource.data.status == 'waiting' &&
+                      request.resource.data.createdAt is timestamp &&
+                      // Host player state must be valid
+                      request.auth.uid in request.resource.data.players &&
+                      isValidDisplayName(request.resource.data.players[request.auth.uid].displayName) &&
+                      request.resource.data.players[request.auth.uid].playerId == request.auth.uid;
+
+      // Update: Complex validation for different scenarios
+      allow update: if isAuthenticated() &&
+                      isParticipant() &&
+                      immutableFieldsUnchanged() &&
+                      isValidBattleStatus(request.resource.data.status) &&
+                      // Validate all player states if players field is modified
+                      (!('players' in request.resource.data) ||
+                       validatePlayersUpdate());
+
+      // Delete: Only host can delete
+      allow delete: if isAuthenticated() &&
+                      request.auth.uid == resource.data.hostId;
+
+      // Helper for validating player updates in a room
+      function validatePlayersUpdate() {
+        let oldPlayers = resource.data.players;
+        let newPlayers = request.resource.data.players;
+
+        // All existing players must remain (can't remove players via update)
+        return oldPlayers.keys().hasAll(newPlayers.keys()) &&
+               // Each player state must be valid
+               newPlayers.keys().hasAll([request.auth.uid]) &&
+               // Validate the updating player's state
+               isValidProgress(newPlayers[request.auth.uid], resource.data.difficulty) &&
+               isValidPlayerStatus(newPlayers[request.auth.uid].status);
+      }
+
+      // ============================================================================
+      // PRIVATE DATA SUBCOLLECTION (for storing sensitive gridData)
+      // ============================================================================
+
+      match /privateData/{playerId} {
+        // Players can only read and write their own private data
+        allow read, write: if isOwner(playerId);
+      }
+    }
+
+    // ============================================================================
+    // SUSPICIOUS GAMES COLLECTION (for audit/review)
+    // ============================================================================
+
+    match /suspiciousGames/{gameId} {
+      // Only Cloud Functions can write
+      allow read: if isAuthenticated();
+      allow write: if false; // Only server-side via admin SDK
+    }
+
+    // ============================================================================
+    // RATE LIMIT VIOLATIONS COLLECTION (for monitoring)
+    // ============================================================================
+
+    match /rateLimitViolations/{violationId} {
+      // Only Cloud Functions can write
+      allow read: if isAuthenticated();
+      allow write: if false; // Only server-side via admin SDK
+    }
+
+    // ============================================================================
+    // AUDIT LOGS COLLECTION (for security monitoring)
+    // ============================================================================
+
+    match /auditLogs/{logId} {
+      // Only Cloud Functions can write
+      allow read: if isAuthenticated();
+      allow write: if false; // Only server-side via admin SDK
+    }
+
+    // ============================================================================
+    // DEFAULT DENY ALL
+    // ============================================================================
+
+    // Deny all other access by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

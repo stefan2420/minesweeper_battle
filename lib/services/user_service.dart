@@ -8,11 +8,34 @@ class UserService {
   CollectionReference<Map<String, dynamic>> get _usersCollection =>
       _firestore.collection('users');
 
+  /// Sanitizes display name to prevent XSS and injection attacks
+  String _sanitizeDisplayName(String displayName) {
+    // Remove HTML tags
+    String sanitized = displayName.replaceAll(RegExp(r'<[^>]*>'), '');
+
+    // Strip control characters
+    sanitized = sanitized.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+
+    // Trim whitespace
+    sanitized = sanitized.trim();
+
+    // Enforce length limits (1-50 characters)
+    if (sanitized.isEmpty) {
+      throw ArgumentError('Display name cannot be empty');
+    }
+    if (sanitized.length > 50) {
+      sanitized = sanitized.substring(0, 50);
+    }
+
+    return sanitized;
+  }
+
   Future<void> createUser(String id, String email, String displayName) async {
+    final sanitizedDisplayName = _sanitizeDisplayName(displayName);
     final user = UserModel(
       id: id,
       email: email,
-      displayName: displayName,
+      displayName: sanitizedDisplayName,
       createdAt: DateTime.now(),
     );
     await _usersCollection.doc(id).set(user.toJson());
@@ -32,7 +55,8 @@ class UserService {
   }
 
   Future<void> updateDisplayName(String id, String displayName) async {
-    await _usersCollection.doc(id).update({'displayName': displayName});
+    final sanitizedDisplayName = _sanitizeDisplayName(displayName);
+    await _usersCollection.doc(id).update({'displayName': sanitizedDisplayName});
   }
 
   Future<void> recordGameWin(String id, Difficulty difficulty, int timeSeconds) async {
