@@ -17,6 +17,20 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Check if user has dev role (dev or admin)
+    function isDevUser() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['dev', 'admin']);
+    }
+
+    // Check if user has admin role
+    function isAdminUser() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     // Check if user is a participant in the battle room
     function isParticipant() {
       return isAuthenticated() &&
@@ -60,6 +74,13 @@ service cloud.firestore {
              request.resource.data.hostId == resource.data.hostId &&
              request.resource.data.createdAt == resource.data.createdAt &&
              request.resource.data.difficulty == resource.data.difficulty;
+    }
+
+    // Allow a participant to set rematchRoomCode (valid 6-char code or null)
+    function isValidRematchUpdate() {
+      return !('rematchRoomCode' in request.resource.data) ||
+             request.resource.data.rematchRoomCode == null ||
+             isValidRoomCode(request.resource.data.rematchRoomCode);
     }
 
     // Get max cells based on difficulty
@@ -117,16 +138,21 @@ service cloud.firestore {
                       isValidDisplayName(request.resource.data.displayName) &&
                       request.resource.data.id == userId &&
                       request.resource.data.email is string &&
-                      request.resource.data.createdAt is timestamp;
+                      request.resource.data.createdAt is timestamp &&
+                      // New users must have role 'user' (prevents self-promotion)
+                      (!('role' in request.resource.data) || request.resource.data.role == 'user');
 
       allow update: if isOwner(userId) &&
                       // Immutable fields
                       request.resource.data.id == resource.data.id &&
                       request.resource.data.createdAt == resource.data.createdAt &&
+                      // Users cannot modify their own role (prevents privilege escalation)
+                      (!('role' in request.resource.data) ||
+                       request.resource.data.role == resource.data.role) &&
                       // Display name validation if changed
                       (!('displayName' in request.resource.data) ||
                        isValidDisplayName(request.resource.data.displayName)) &&
-                      // Stats can only increase (monotonic)
+                      // Stats can only increase (monotonic) — ELO is server-only
                       (!('stats' in request.resource.data) ||
                        (request.resource.data.stats.gamesPlayed >= resource.data.stats.gamesPlayed &&
                         request.resource.data.stats.gamesWon >= resource.data.stats.gamesWon &&
@@ -134,12 +160,36 @@ service cloud.firestore {
                         request.resource.data.stats.battleLosses >= resource.data.stats.battleLosses));
 
       allow delete: if isOwner(userId);
+
+      // ========================================================================
+      // FRIENDS SUBCOLLECTION
+      // ========================================================================
+      match /friends/{friendId} {
+        // Users can read and write their own friends subcollection
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // Leaderboard queries (read-only, limited)
     match /users/{userId} {
       allow list: if isAuthenticated() &&
                     request.query.limit <= 100;
+    }
+
+    // ============================================================================
+    // APP CONFIG COLLECTION
+    // ============================================================================
+
+    match /appConfig/{doc} {
+      // All authenticated users can read config
+      allow read: if isAuthenticated();
+
+      // Only dev/admin users can write config
+      allow write: if isDevUser() &&
+                     // Validate qualifierMatchCount range if present
+                     (!('qualifierMatchCount' in request.resource.data) ||
+                      (request.resource.data.qualifierMatchCount >= 0 &&
+                       request.resource.data.qualifierMatchCount <= 10));
     }
 
     // ============================================================================
@@ -169,6 +219,7 @@ service cloud.firestore {
                       isParticipant() &&
                       immutableFieldsUnchanged() &&
                       isValidBattleStatus(request.resource.data.status) &&
+                      isValidRematchUpdate() &&
                       // Validate all player states if players field is modified
                       (!('players' in request.resource.data) ||
                        validatePlayersUpdate());
@@ -198,6 +249,30 @@ service cloud.firestore {
       match /privateData/{playerId} {
         // Players can only read and write their own private data
         allow read, write: if isOwner(playerId);
+      }
+    }
+
+    // ============================================================================
+    // DAILY CHALLENGES COLLECTION
+    // ============================================================================
+
+    match /dailyChallenges/{date} {
+      // All authenticated users can read challenge documents
+      allow read: if isAuthenticated();
+
+      // Only the server (or client creating the doc when it doesn't exist yet)
+      // can create challenge docs — clients write lazily on first load
+      allow create: if isAuthenticated();
+      allow update: if false; // Immutable once created
+
+      match /results/{userId} {
+        // Authenticated users can read all results (for leaderboard)
+        allow read: if isAuthenticated();
+
+        // Users can only submit their own result once (create only, no update)
+        allow create: if isOwner(userId) &&
+                        request.resource.data.userId == userId;
+        allow update, delete: if false;
       }
     }
 

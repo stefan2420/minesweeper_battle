@@ -8,6 +8,7 @@ import '../../widgets/game_header.dart';
 import '../../widgets/opponent_mini_grid.dart';
 import '../../widgets/betting_modal.dart';
 import '../../services/xp_service.dart';
+import 'waiting_room_screen.dart';
 
 class BattleScreen extends StatefulWidget {
   const BattleScreen({super.key});
@@ -19,6 +20,7 @@ class BattleScreen extends StatefulWidget {
 class _BattleScreenState extends State<BattleScreen> {
   bool _dialogShown = false;
   bool _bettingModalShown = false;
+  bool _rematchHandled = false;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +53,29 @@ class _BattleScreenState extends State<BattleScreen> {
       _dialogShown = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showGameEndDialog(context, session, userId);
+      });
+    }
+
+    // Auto-navigate when opponent proposed a rematch
+    final pendingRematch = battleProvider.pendingRematchCode;
+    if (pendingRematch != null && !_rematchHandled) {
+      _rematchHandled = true;
+      final guestName =
+          context.read<AuthProvider>().userModel?.displayName ?? 'Player';
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        final joined = await battleProvider.joinRoom(
+          roomCode: pendingRematch,
+          guestId: userId ?? '',
+          guestDisplayName: guestName,
+        );
+        if (joined && mounted) {
+          battleProvider.reset();
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const WaitingRoomScreen()),
+          );
+        }
       });
     }
 
@@ -206,7 +231,7 @@ class _BattleScreenState extends State<BattleScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(title),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -221,8 +246,30 @@ class _BattleScreenState extends State<BattleScreen> {
         ),
         actions: [
           TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              if (!mounted) return;
+              final nav = Navigator.of(context);
+              final battleProvider = context.read<BattleProvider>();
+              final authProvider = context.read<AuthProvider>();
+              final myId = authProvider.firebaseUser?.uid ?? '';
+              final myName = authProvider.userModel?.displayName ?? 'Player';
+              final newCode = await battleProvider.proposeRematch(
+                playerId: myId,
+                displayName: myName,
+              );
+              if (newCode != null && mounted) {
+                // Navigate to new waiting room as host
+                nav.pushReplacement(
+                  MaterialPageRoute(builder: (_) => const WaitingRoomScreen()),
+                );
+              }
+            },
+            child: const Text('Rematch'),
+          ),
+          TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               context.read<BattleProvider>().reset();
               Navigator.pop(context);
             },

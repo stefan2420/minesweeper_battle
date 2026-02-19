@@ -3,11 +3,14 @@ import 'package:provider/provider.dart';
 import '../config/design_tokens.dart';
 import '../models/game_board.dart';
 import '../providers/auth_provider.dart';
+import '../providers/daily_challenge_provider.dart';
 import '../widgets/game_instructions_dialog.dart';
 import 'game_screen.dart';
 import 'battle/lobby_screen.dart';
 import 'profile_screen.dart';
 import 'leaderboard_screen.dart';
+import 'daily_challenge_screen.dart';
+import 'dev/dev_settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -46,6 +49,19 @@ class HomeScreen extends StatelessWidget {
               );
             },
           ),
+          // Dev settings icon (only visible to dev/admin users)
+          if (user?.isDev ?? false)
+            IconButton(
+              icon: const Icon(Icons.developer_mode),
+              tooltip: 'Developer Settings',
+              color: Colors.deepPurple,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DevSettingsScreen()),
+                );
+              },
+            ),
         ],
       ),
       body: SafeArea(
@@ -85,6 +101,27 @@ class HomeScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const LobbyScreen()),
+                  );
+                },
+              ),
+
+              const SizedBox(height: DesignTokens.spacingM),
+
+              // Daily Challenge Button
+              _MenuButton(
+                icon: Icons.today,
+                title: 'Daily Challenge',
+                subtitle: 'One board, everyone competes',
+                color: Colors.purple,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChangeNotifierProvider(
+                        create: (_) => DailyChallengeProvider(),
+                        child: const DailyChallengeScreen(),
+                      ),
+                    ),
                   );
                 },
               ),

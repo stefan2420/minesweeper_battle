@@ -107,4 +107,16 @@ class UserService {
         .map((doc) => UserModel.fromJson(doc.id, doc.data()))
         .toList();
   }
+
+  Future<List<UserModel>> searchUsersByName(String query) async {
+    if (query.isEmpty) return [];
+    final snapshot = await _usersCollection
+        .where('displayName', isGreaterThanOrEqualTo: query)
+        .where('displayName', isLessThanOrEqualTo: '$query\uf8ff')
+        .limit(10)
+        .get();
+    return snapshot.docs
+        .map((doc) => UserModel.fromJson(doc.id, doc.data()))
+        .toList();
+  }
 }

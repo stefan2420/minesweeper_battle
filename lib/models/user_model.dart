@@ -1,5 +1,26 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// User role enum for permission management
+enum UserRole {
+  user,
+  dev,
+  admin;
+
+  static UserRole fromString(String? value) {
+    if (value == null) return UserRole.user;
+    switch (value.toLowerCase()) {
+      case 'dev':
+        return UserRole.dev;
+      case 'admin':
+        return UserRole.admin;
+      default:
+        return UserRole.user;
+    }
+  }
+
+  String toJson() => name;
+}
+
 class UserStats {
   final int gamesPlayed;
   final int gamesWon;
@@ -11,6 +32,9 @@ class UserStats {
   final int rankedGamesPlayed;
   final int totalXP;
   final int level;
+  final bool isInQualifiers; // true if player is still in placement matches
+  final List<String> unlockedAchievements; // list of achievement IDs
+  final Map<String, int> achievementProgress; // e.g. {'bet_10': 4}
 
   const UserStats({
     this.gamesPlayed = 0,
@@ -23,6 +47,9 @@ class UserStats {
     this.rankedGamesPlayed = 0,
     this.totalXP = 0,
     this.level = 1,
+    this.isInQualifiers = true, // New users start in qualifiers
+    this.unlockedAchievements = const [],
+    this.achievementProgress = const {},
   });
 
   Map<String, dynamic> toJson() {
@@ -37,6 +64,9 @@ class UserStats {
       'rankedGamesPlayed': rankedGamesPlayed,
       'totalXP': totalXP,
       'level': level,
+      'isInQualifiers': isInQualifiers,
+      'unlockedAchievements': unlockedAchievements,
+      'achievementProgress': achievementProgress,
     };
   }
 
@@ -52,6 +82,14 @@ class UserStats {
       rankedGamesPlayed: json['rankedGamesPlayed'] as int? ?? 0,
       totalXP: json['totalXP'] as int? ?? 0,
       level: json['level'] as int? ?? 1,
+      // Default to false for backwards compatibility with existing users
+      isInQualifiers: json['isInQualifiers'] as bool? ?? false,
+      unlockedAchievements: List<String>.from(
+        json['unlockedAchievements'] as List? ?? [],
+      ),
+      achievementProgress: Map<String, int>.from(
+        json['achievementProgress'] as Map? ?? {},
+      ),
     );
   }
 
@@ -66,6 +104,9 @@ class UserStats {
     int? rankedGamesPlayed,
     int? totalXP,
     int? level,
+    bool? isInQualifiers,
+    List<String>? unlockedAchievements,
+    Map<String, int>? achievementProgress,
   }) {
     return UserStats(
       gamesPlayed: gamesPlayed ?? this.gamesPlayed,
@@ -78,6 +119,9 @@ class UserStats {
       rankedGamesPlayed: rankedGamesPlayed ?? this.rankedGamesPlayed,
       totalXP: totalXP ?? this.totalXP,
       level: level ?? this.level,
+      isInQualifiers: isInQualifiers ?? this.isInQualifiers,
+      unlockedAchievements: unlockedAchievements ?? this.unlockedAchievements,
+      achievementProgress: achievementProgress ?? this.achievementProgress,
     );
   }
 }
@@ -88,6 +132,7 @@ class UserModel {
   final String displayName;
   final DateTime createdAt;
   final UserStats stats;
+  final UserRole role;
 
   const UserModel({
     required this.id,
@@ -95,7 +140,14 @@ class UserModel {
     required this.displayName,
     required this.createdAt,
     this.stats = const UserStats(),
+    this.role = UserRole.user,
   });
+
+  /// Check if user has developer permissions
+  bool get isDev => role == UserRole.dev || role == UserRole.admin;
+
+  /// Check if user has admin permissions
+  bool get isAdmin => role == UserRole.admin;
 
   Map<String, dynamic> toJson() {
     return {
@@ -103,6 +155,7 @@ class UserModel {
       'displayName': displayName,
       'createdAt': Timestamp.fromDate(createdAt),
       'stats': stats.toJson(),
+      'role': role.toJson(),
     };
   }
 
@@ -113,6 +166,7 @@ class UserModel {
       displayName: json['displayName'] as String? ?? '',
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       stats: UserStats.fromJson(json['stats'] as Map<String, dynamic>? ?? {}),
+      role: UserRole.fromString(json['role'] as String?),
     );
   }
 
@@ -122,6 +176,7 @@ class UserModel {
     String? displayName,
     DateTime? createdAt,
     UserStats? stats,
+    UserRole? role,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -129,6 +184,7 @@ class UserModel {
       displayName: displayName ?? this.displayName,
       createdAt: createdAt ?? this.createdAt,
       stats: stats ?? this.stats,
+      role: role ?? this.role,
     );
   }
 }

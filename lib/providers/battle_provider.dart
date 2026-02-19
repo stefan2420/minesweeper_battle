@@ -6,14 +6,15 @@ import '../models/game_board.dart';
 import '../models/game_state.dart';
 import '../services/battle_service.dart';
 import '../services/user_service.dart';
-import '../services/rating_service.dart';
 import '../services/xp_service.dart';
+import '../services/analytics_service.dart';
+import '../services/achievement_service.dart';
 
 class BattleProvider extends ChangeNotifier {
   final BattleService _battleService = BattleService();
   final UserService _userService = UserService();
-  final RatingService _ratingService = RatingService();
   final XPService _xpService = XPService();
+  final AchievementService _achievementService = AchievementService();
 
   BattleSession? _session;
   GameBoard? _board;
@@ -36,6 +37,10 @@ class BattleProvider extends ChangeNotifier {
   int? _winnerFinishTime;
   int? _loserFinishTime;
 
+  // Rematch state
+  bool _rematchProposed = false; // This player already proposed
+  String? _pendingRematchCode; // Rematch room code seen from opponent
+
   BattleSession? get session => _session;
   GameBoard? get board => _board;
   GameState get gameState => _gameState;
@@ -43,6 +48,8 @@ class BattleProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isBettingPhase => _isBettingPhase;
   bool get playerDecidedToBet => _playerDecidedToBet;
+  bool get rematchProposed => _rematchProposed;
+  String? get pendingRematchCode => _pendingRematchCode;
 
   Future<String?> createRoom({
     required String hostId,
@@ -116,6 +123,13 @@ class BattleProvider extends ChangeNotifier {
         // Game just started
         if (wasWaiting && session?.status == BattleStatus.playing) {
           _initializeBoard();
+        }
+
+        // Opponent proposed a rematch — expose the code so the UI can navigate
+        if (!_rematchProposed &&
+            session?.rematchRoomCode != null &&
+            _pendingRematchCode == null) {
+          _pendingRematchCode = session!.rematchRoomCode;
         }
 
         notifyListeners();
@@ -300,22 +314,36 @@ class BattleProvider extends ChangeNotifier {
           .firstWhere((id) => id != playerId, orElse: () => '');
 
       if (opponentId.isNotEmpty) {
-        // Update Elo ratings atomically
-        try {
-          await _ratingService.updateRatings(
-            winnerId: playerId,
-            loserId: opponentId,
-          );
-        } catch (e) {
-          print('Error updating ratings: $e');
-          // Continue even if rating update fails
-        }
+        // ELO update is handled server-side by updateEloRatings Cloud Function
 
         // Store XP info for later award (after betting decision)
         _winnerId = playerId;
         _loserId = opponentId;
         _winnerFinishTime = _session!.players[playerId]?.finishTime ?? _gameState.elapsedSeconds;
         _loserFinishTime = _session!.players[opponentId]?.finishTime ?? _gameState.elapsedSeconds;
+
+        // Log analytics
+        AnalyticsService.instance.logBattleWon(
+          difficulty: _session!.difficulty.name,
+          finishTime: _gameState.elapsedSeconds,
+        );
+
+        // Check win-based achievements
+        final doc = await _userService.getUser(playerId);
+        if (doc != null) {
+          await _achievementService.checkAchievements(
+            playerId,
+            'battle_win',
+            {'battleWins': doc.stats.battleWins},
+          );
+          if (_session!.difficulty.name == 'beginner') {
+            await _achievementService.checkAchievements(
+              playerId,
+              'speed_win_beginner',
+              {'finishTime': _gameState.elapsedSeconds},
+            );
+          }
+        }
 
         // Enter betting phase instead of awarding XP immediately
         // XP will be awarded after winner makes betting decision
@@ -325,6 +353,9 @@ class BattleProvider extends ChangeNotifier {
     } else {
       await _userService.recordBattleLoss(playerId);
       // Rating and XP updates handled by winner's side
+      AnalyticsService.instance.logBattleLost(
+        difficulty: _session!.difficulty.name,
+      );
     }
   }
 
@@ -400,8 +431,56 @@ class BattleProvider extends ChangeNotifier {
         difficulty: _session!.difficulty,
         winnerBetOutcome: betOutcome,
       );
+
+      // Log bet outcome analytics
+      AnalyticsService.instance.logBetOutcome(result: betOutcome);
+
+      // Check bet-win achievements
+      if (betOutcome == 'success') {
+        await _achievementService.checkAchievements(
+          _winnerId!,
+          'bet_win',
+          {},
+        );
+      }
+
+      // Check level-up achievements after XP award
+      final doc = await _userService.getUser(_winnerId!);
+      if (doc != null) {
+        await _achievementService.checkAchievements(
+          _winnerId!,
+          'level_up',
+          {'level': doc.stats.level},
+        );
+      }
     } catch (e) {
       print('Error awarding winner XP: $e');
+    }
+  }
+
+  /// Propose a rematch: creates a new room and writes its code to the current session.
+  Future<String?> proposeRematch({
+    required String playerId,
+    required String displayName,
+  }) async {
+    if (_session == null || _rematchProposed) return null;
+    _rematchProposed = true;
+
+    try {
+      final newRoomCode = await createRoom(
+        hostId: playerId,
+        hostDisplayName: displayName,
+        difficulty: _session!.difficulty,
+      );
+      if (newRoomCode != null) {
+        await _battleService.setRematchRoom(_session!.roomCode, newRoomCode);
+      }
+      return newRoomCode;
+    } catch (e) {
+      _rematchProposed = false;
+      _error = 'Failed to propose rematch: $e';
+      notifyListeners();
+      return null;
     }
   }
 
@@ -426,6 +505,14 @@ class BattleProvider extends ChangeNotifier {
     _gameState = const GameState();
     _error = null;
     _isLoading = false;
+    _rematchProposed = false;
+    _pendingRematchCode = null;
+    _isBettingPhase = false;
+    _playerDecidedToBet = false;
+    _winnerId = null;
+    _loserId = null;
+    _winnerFinishTime = null;
+    _loserFinishTime = null;
     notifyListeners();
   }
 

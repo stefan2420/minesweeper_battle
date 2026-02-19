@@ -108,6 +108,7 @@ class BattleSession {
   final DateTime? startedAt;
   final String? winnerId;
   final Map<String, PlayerState> players;
+  final String? rematchRoomCode; // Set when a player proposes a rematch
 
   const BattleSession({
     required this.roomCode,
@@ -119,6 +120,7 @@ class BattleSession {
     this.startedAt,
     this.winnerId,
     this.players = const {},
+    this.rematchRoomCode,
   });
 
   Map<String, dynamic> toJson() {
@@ -132,6 +134,7 @@ class BattleSession {
       'startedAt': startedAt != null ? Timestamp.fromDate(startedAt!) : null,
       'winnerId': winnerId,
       'players': players.map((key, value) => MapEntry(key, value.toJson())),
+      'rematchRoomCode': rematchRoomCode,
     };
   }
 
@@ -155,6 +158,7 @@ class BattleSession {
       players: playersJson.map(
         (key, value) => MapEntry(key, PlayerState.fromJson(value as Map<String, dynamic>)),
       ),
+      rematchRoomCode: json['rematchRoomCode'] as String?,
     );
   }
 
@@ -168,6 +172,7 @@ class BattleSession {
     DateTime? startedAt,
     String? winnerId,
     Map<String, PlayerState>? players,
+    String? rematchRoomCode,
   }) {
     return BattleSession(
       roomCode: roomCode ?? this.roomCode,
@@ -179,6 +184,7 @@ class BattleSession {
       startedAt: startedAt ?? this.startedAt,
       winnerId: winnerId ?? this.winnerId,
       players: players ?? this.players,
+      rematchRoomCode: rematchRoomCode ?? this.rematchRoomCode,
     );
   }
 

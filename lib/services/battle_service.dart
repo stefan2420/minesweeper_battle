@@ -308,4 +308,11 @@ class BattleService {
   Future<void> deleteRoom(String roomCode) async {
     await _roomsCollection.doc(roomCode).delete();
   }
+
+  /// Stores a rematch room code in the current room so the opponent can auto-join.
+  Future<void> setRematchRoom(String roomCode, String rematchRoomCode) async {
+    await _roomsCollection.doc(roomCode).update({
+      'rematchRoomCode': rematchRoomCode,
+    });
+  }
 }

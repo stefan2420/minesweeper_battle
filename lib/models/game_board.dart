@@ -74,6 +74,45 @@ class GameBoard {
     );
   }
 
+  /// Creates a deterministic board using [seed] — used for Daily Challenges.
+  /// Mines are pre-placed immediately (no safe-zone, same layout for everyone).
+  factory GameBoard.seeded(Difficulty difficulty, int seed) {
+    final config = GameBoardConfig.fromDifficulty(difficulty);
+    final board = GameBoard(
+      rows: config.rows,
+      cols: config.cols,
+      totalMines: config.mines,
+    );
+    board._placeMinesSeeded(seed);
+    return board;
+  }
+
+  void _placeMinesSeeded(int seed) {
+    final random = Random(seed);
+    int placed = 0;
+    while (placed < totalMines) {
+      final row = random.nextInt(rows);
+      final col = random.nextInt(cols);
+      if (!grid[row][col].hasMine) {
+        grid[row][col].hasMine = true;
+        placed++;
+      }
+    }
+    // Calculate adjacent mine counts
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        if (!grid[r][c].hasMine) {
+          int count = 0;
+          for (final n in getNeighbors(r, c)) {
+            if (n.hasMine) count++;
+          }
+          grid[r][c].adjacentMines = count;
+        }
+      }
+    }
+    minesPlaced = true;
+  }
+
   void _initializeGrid() {
     grid = List.generate(
       rows,
