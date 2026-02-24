@@ -12,7 +12,28 @@
           "package_name": "com.minesweeper.minesweeper_battle"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "822674575234-lok5lv5orupvsk8uicg21vt48d39n3sc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.minesweeper.minesweeper_battle",
+            "certificate_hash": "84205066b71903359e4ce3ddf32f1025dd0a9c70"
+          }
+        },
+        {
+          "client_id": "822674575234-ngu6o6cc2afudvif8s57qk50at4s1fi1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.minesweeper.minesweeper_battle",
+            "certificate_hash": "3ea8cd39dbf35c5cafe9c11f9c4ebc7d2c8b05f3"
+          }
+        },
+        {
+          "client_id": "822674575234-6553g9388ai06fqreoub3rb43kasop6k.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBQlk5LBQFSS_5YqJelCxMJ4PO1nxu1qsE"
@@ -20,7 +41,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "822674575234-6553g9388ai06fqreoub3rb43kasop6k.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "822674575234-bjel56iijb0hb0vk2l54em2mnd2f8ai3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.minesweeper.minesweeperBattle"
+              }
+            }
+          ]
         }
       }
     }

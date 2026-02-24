@@ -22,84 +22,101 @@ class CellWidget extends StatefulWidget {
   State<CellWidget> createState() => _CellWidgetState();
 }
 
-class _CellWidgetState extends State<CellWidget> {
+class _CellWidgetState extends State<CellWidget>
+    with SingleTickerProviderStateMixin {
   bool _isPressed = false;
+  late AnimationController _revealController;
+  late Animation<double> _revealScale;
+  late Animation<double> _revealOpacity;
+  CellState? _prevState;
 
-  /// Get theme-aware number color based on adjacent mine count
-  Color _getNumberColor(BuildContext context, int number) {
-    final colors = Theme.of(context).colorScheme;
-    switch (number) {
-      case 1:
-        return colors.primary;
-      case 2:
-        return Colors.green.shade700;
-      case 3:
-        return colors.error;
-      case 4:
-        return Colors.purple.shade700;
-      case 5:
-        return Colors.brown.shade700;
-      case 6:
-        return Colors.cyan.shade700;
-      case 7:
-        return colors.onSurface;
-      case 8:
-        return colors.onSurfaceVariant;
-      default:
-        return Colors.transparent;
+  @override
+  void initState() {
+    super.initState();
+    _revealController = AnimationController(
+      vsync: this,
+      duration: DesignTokens.animationNormal,
+    );
+    _revealScale = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _revealController, curve: Curves.easeOutBack),
+    );
+    _revealOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _revealController, curve: Curves.easeOut),
+    );
+    _prevState = widget.cell.state;
+  }
+
+  @override
+  void didUpdateWidget(CellWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Trigger animation when cell transitions to revealed or flagged
+    if (_prevState != widget.cell.state) {
+      if (widget.cell.isRevealed || widget.cell.isFlagged) {
+        _revealController.forward(from: 0);
+      }
+      _prevState = widget.cell.state;
     }
   }
 
   @override
+  void dispose() {
+    _revealController.dispose();
+    super.dispose();
+  }
+
+  Color _getNumberColor(int number) {
+    if (number < 0 || number >= AppColors.numberColors.length) {
+      return Colors.transparent;
+    }
+    return AppColors.numberColors[number];
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isHiddenOrFlagged = widget.cell.isHidden || widget.cell.isFlagged;
+
     return Semantics(
       label: _getCellSemanticLabel(),
       hint: widget.cell.isRevealed ? null : 'Double tap to reveal, long press to flag',
       button: !widget.cell.isRevealed,
       enabled: !widget.gameOver,
       child: GestureDetector(
-        onTapDown: widget.gameOver ? null : (_) {
-          setState(() => _isPressed = true);
-        },
+        onTapDown: widget.gameOver ? null : (_) => setState(() => _isPressed = true),
         onTapUp: widget.gameOver ? null : (_) {
           setState(() => _isPressed = false);
           widget.onTap();
         },
-        onTapCancel: () {
-          setState(() => _isPressed = false);
-        },
+        onTapCancel: () => setState(() => _isPressed = false),
         onLongPress: widget.gameOver ? null : widget.onLongPress,
         child: AnimatedScale(
-          scale: _isPressed ? 0.95 : 1.0,
+          scale: _isPressed ? 0.88 : 1.0,
           duration: DesignTokens.animationFast,
+          curve: Curves.easeInOut,
           child: AnimatedContainer(
             duration: DesignTokens.animationFast,
             width: widget.size,
             height: widget.size,
             decoration: BoxDecoration(
               color: _getBackgroundColor(context),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outline,
-                width: 1.0,
-              ),
-              boxShadow: widget.cell.isHidden || widget.cell.isFlagged
+              borderRadius: BorderRadius.circular(widget.size * 0.12),
+              border: isHiddenOrFlagged
+                  ? Border.all(
+                      color: colors.outline.withValues(alpha: 0.4),
+                      width: 1,
+                    )
+                  : null,
+              boxShadow: isHiddenOrFlagged
                   ? [
                       BoxShadow(
-                        color: Colors.white.withOpacity(_isPressed ? 0.6 : 0.8),
-                        offset: const Offset(-1, -1),
-                        blurRadius: 0,
-                      ),
-                      BoxShadow(
-                        color: Theme.of(context).colorScheme.shadow.withOpacity(_isPressed ? 0.8 : 0.6),
-                        offset: const Offset(1, 1),
-                        blurRadius: 0,
+                        color: colors.shadow.withValues(alpha: _isPressed ? 0.05 : 0.12),
+                        blurRadius: _isPressed ? 2 : 4,
+                        offset: const Offset(0, 2),
                       ),
                     ]
                   : null,
             ),
-            child: Center(
-              child: _buildContent(),
-            ),
+            child: Center(child: _buildContent()),
           ),
         ),
       ),
@@ -109,57 +126,65 @@ class _CellWidgetState extends State<CellWidget> {
   Color _getBackgroundColor(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     if (widget.cell.isRevealed) {
-      if (widget.cell.hasMine) {
-        return colors.errorContainer;
-      }
-      return colors.surface;
+      if (widget.cell.hasMine) return colors.errorContainer;
+      return colors.surfaceContainerHighest.withValues(alpha: 0.5);
     }
-    return colors.surfaceVariant;
+    if (widget.cell.isFlagged) return colors.primaryContainer;
+    return colors.surfaceContainerHighest;
   }
 
   Widget? _buildContent() {
     if (widget.cell.isFlagged) {
-      return Icon(
-        Icons.flag,
-        color: Theme.of(context).colorScheme.error,
-        size: widget.size * 0.6,
+      return ScaleTransition(
+        scale: _revealScale,
+        child: FadeTransition(
+          opacity: _revealOpacity,
+          child: Icon(
+            Icons.flag_rounded,
+            color: Theme.of(context).colorScheme.error,
+            size: widget.size * 0.58,
+          ),
+        ),
       );
     }
 
     if (widget.cell.isRevealed) {
       if (widget.cell.hasMine) {
-        return Icon(
-          Icons.brightness_7,
-          color: Theme.of(context).colorScheme.onErrorContainer,
-          size: widget.size * 0.7,
+        return ScaleTransition(
+          scale: _revealScale,
+          child: FadeTransition(
+            opacity: _revealOpacity,
+            child: Text('💣', style: TextStyle(fontSize: widget.size * 0.62)),
+          ),
         );
       }
-
       if (widget.cell.adjacentMines > 0) {
-        return Text(
-          '${widget.cell.adjacentMines}',
-          style: TextStyle(
-            color: _getNumberColor(context, widget.cell.adjacentMines),
-            fontWeight: FontWeight.bold,
-            fontSize: widget.size * 0.6,
+        return ScaleTransition(
+          scale: _revealScale,
+          child: FadeTransition(
+            opacity: _revealOpacity,
+            child: Text(
+              '${widget.cell.adjacentMines}',
+              style: TextStyle(
+                color: _getNumberColor(widget.cell.adjacentMines),
+                fontWeight: FontWeight.w800,
+                fontSize: widget.size * 0.58,
+                height: 1.0,
+              ),
+            ),
           ),
         );
       }
     }
-
     return null;
   }
 
   String _getCellSemanticLabel() {
-    if (widget.cell.isFlagged) {
-      return 'Flagged cell';
-    }
+    if (widget.cell.isFlagged) return 'Flagged cell';
     if (widget.cell.isRevealed) {
-      if (widget.cell.hasMine) {
-        return 'Mine';
-      }
+      if (widget.cell.hasMine) return 'Mine';
       if (widget.cell.adjacentMines > 0) {
-        return '${widget.cell.adjacentMines} adjacent ${widget.cell.adjacentMines == 1 ? "mine" : "mines"}';
+        return '${widget.cell.adjacentMines} adjacent mine${widget.cell.adjacentMines == 1 ? "" : "s"}';
       }
       return 'Empty cell';
     }

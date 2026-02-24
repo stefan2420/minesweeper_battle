@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/user_model.dart';
 
 /// Rank tier enumeration
 enum RankTier {
@@ -85,5 +86,25 @@ class RankTierHelper {
       case RankTier.grandmaster:
         return '2000+';
     }
+  }
+
+  /// Check if player should show qualifier status instead of rank
+  static bool shouldShowQualifier(UserStats stats) {
+    return stats.isInQualifiers;
+  }
+
+  /// Get qualifier progress text (e.g., "Qualifier 2/3")
+  static String getQualifierProgress(int played, int threshold) {
+    return 'Qualifier $played/$threshold';
+  }
+
+  /// Get qualifier color (amber for "in progress")
+  static Color getQualifierColor() {
+    return Colors.amber;
+  }
+
+  /// Get qualifier icon (hourglass for "waiting")
+  static IconData getQualifierIcon() {
+    return Icons.hourglass_bottom;
   }
 }

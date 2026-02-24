@@ -84,6 +84,32 @@ class DailyChallengeService {
     return xp;
   }
 
+  /// Returns the current consecutive-days streak for a user (0 if no completions).
+  /// Checks up to 60 consecutive days going backwards from today.
+  Future<int> getStreak([String? userId]) async {
+    if (userId == null) return 0;
+    final now = DateTime.now().toUtc();
+    int streak = 0;
+    for (var i = 0; i < 60; i++) {
+      final day = now.subtract(Duration(days: i));
+      final key =
+          '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+      final doc = await _firestore
+          .collection('dailyChallenges')
+          .doc(key)
+          .collection('results')
+          .doc(userId)
+          .get();
+      if (doc.exists) {
+        streak++;
+      } else if (i > 0) {
+        break; // Gap found — streak ends
+      }
+      // i == 0 means today; missing today doesn't break the streak
+    }
+    return streak;
+  }
+
   /// Gets the leaderboard for a specific date (top 20 by completion time).
   Future<List<DailyChallengeResult>> getLeaderboard(String date) async {
     final snapshot = await _firestore

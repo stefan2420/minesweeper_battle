@@ -79,7 +79,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
               children: [
                 // Room Code Display
                 Card(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4),
                   child: Padding(
                     padding: const EdgeInsets.all(DesignTokens.spacingM),
                     child: Column(
@@ -188,18 +188,18 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                           margin: const EdgeInsets.only(bottom: 16),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green, width: 2),
+                            color: AppColors.successSurface(context),
+                            borderRadius: BorderRadius.circular(DesignTokens.radiusM),
+                            border: Border.all(color: AppColors.success, width: 2),
                           ),
                           child: const Row(
                             children: [
-                              Icon(Icons.check_circle, color: Colors.green),
+                              Icon(Icons.check_circle, color: AppColors.success),
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'Your opponent is ready! Click Ready when you\'re set.',
-                                  style: TextStyle(color: Colors.green, fontWeight: FontWeight.w500),
+                                  style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w500),
                                 ),
                               ),
                             ],
@@ -213,9 +213,9 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                           margin: const EdgeInsets.only(bottom: 16),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue, width: 2),
+                            color: AppColors.infoSurface(context),
+                            borderRadius: BorderRadius.circular(DesignTokens.radiusM),
+                            border: Border.all(color: AppColors.info, width: 2),
                           ),
                           child: const Row(
                             children: [
@@ -277,8 +277,8 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                         : Icon(myPlayer?.isReady == true ? Icons.check_circle : Icons.radio_button_unchecked),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: myPlayer?.isReady == true
-                            ? Colors.green[700]
-                            : Theme.of(context).primaryColor,
+                            ? AppColors.success
+                            : Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                       ),
                       label: Text(
@@ -298,7 +298,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                         onPressed: () => battleProvider.startGame(),
                         icon: const Icon(Icons.play_arrow, size: 28),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
+                          backgroundColor: AppColors.success,
                           foregroundColor: Colors.white,
                           elevation: 4,
                         ),
@@ -335,8 +335,8 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: isReady
-            ? Colors.green
-            : Theme.of(context).colorScheme.surfaceVariant,
+            ? AppColors.success
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
           child: Icon(
             isReady ? Icons.check : Icons.person,
             color: isReady
@@ -361,12 +361,12 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
         trailing: isReady
             ? const Chip(
                 label: Text('Ready'),
-                backgroundColor: Colors.green,
+                backgroundColor: AppColors.success,
                 labelStyle: TextStyle(color: Colors.white),
               )
             : Chip(
                 label: const Text('Waiting'),
-                backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 labelStyle: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -379,7 +379,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     return Card(
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: Icon(
             Icons.hourglass_empty,
             color: Theme.of(context).colorScheme.onSurfaceVariant,

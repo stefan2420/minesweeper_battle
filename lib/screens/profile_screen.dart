@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../config/design_tokens.dart';
 import '../providers/auth_provider.dart';
 import '../utils/rank_tier_helper.dart';
 import '../utils/level_helper.dart';
@@ -112,18 +113,34 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Avatar
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: Theme.of(context).primaryColor,
-            child: Text(
-              user.displayName.isNotEmpty
-                  ? user.displayName[0].toUpperCase()
-                  : '?',
-              style: const TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+          // Gradient avatar based on rank tier
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppColors.avatarGradient(user.stats.eloRating),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.avatarGradient(user.stats.eloRating)
+                      .colors
+                      .first
+                      .withValues(alpha: 0.4),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                user.displayName.isNotEmpty
+                    ? user.displayName[0].toUpperCase()
+                    : '?',
+                style: const TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
@@ -134,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           Text(
             user.email,
-            style: TextStyle(color: Colors.grey.shade600),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
 
@@ -183,7 +200,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   const SizedBox(height: 8),
                   Text(
                     'Total XP: ${LevelHelper.formatXP(user.stats.totalXP)}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -261,7 +278,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
           Text(
             'Member since ${_formatDate(user.createdAt)}',
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
           ),
         ],
       ),
@@ -321,7 +338,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             Text(
               unlocked ? 'Unlocked!' : 'Locked',
               style: TextStyle(
-                color: unlocked ? Colors.green : Colors.grey,
+                color: unlocked ? AppColors.success : Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -524,7 +541,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                     Text(
                       stat.label,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
                     ),
                   ],
                 );

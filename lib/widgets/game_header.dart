@@ -24,81 +24,65 @@ class GameHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacingM, vertical: DesignTokens.spacingS),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DesignTokens.spacingM,
+        vertical: DesignTokens.spacingS,
+      ),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(8),
+        color: colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(DesignTokens.radiusL),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Mine counter (clamp to 0 minimum to prevent negative display)
-          _buildCounter(
-            context,
-            icon: Icons.flag,
-            value: mineCount.clamp(0, 999).toString().padLeft(3, '0'),
-            color: mineCount < 0 ? Colors.orange : Colors.red,
+          _AnimatedCounter(
+            icon: Icons.flag_rounded,
+            value: mineCount.clamp(-99, 999).toString().padLeft(3, '0'),
+            color: mineCount < 0 ? AppColors.warning : AppColors.danger,
           ),
-
-          // Face button / Restart
           Semantics(
             label: _getSemanticLabel(),
             button: true,
             hint: 'Tap to restart game',
             child: GestureDetector(
               onTap: onRestart,
-              child: Container(
-                padding: const EdgeInsets.all(DesignTokens.spacingS),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Theme.of(context).colorScheme.outline),
+              child: AnimatedSwitcher(
+                duration: DesignTokens.animationNormal,
+                transitionBuilder: (child, anim) => ScaleTransition(
+                  scale: anim,
+                  child: FadeTransition(opacity: anim, child: child),
                 ),
-                child: Text(
-                  _getFaceEmoji(),
-                  style: const TextStyle(fontSize: 24),
+                child: Container(
+                  key: ValueKey(status),
+                  padding: const EdgeInsets.all(DesignTokens.spacingS),
+                  decoration: BoxDecoration(
+                    color: colors.primaryContainer,
+                    borderRadius: BorderRadius.circular(DesignTokens.radiusM),
+                    border: Border.all(
+                      color: colors.outline.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Text(
+                    _getFaceEmoji(),
+                    style: const TextStyle(fontSize: 32),
+                  ),
                 ),
               ),
             ),
           ),
-
-          // Timer
-          _buildCounter(
-            context,
-            icon: Icons.timer,
+          _AnimatedCounter(
+            icon: Icons.timer_rounded,
             value: _formatTime(elapsedSeconds),
-            color: Colors.blue,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCounter(
-    BuildContext context, {
-    required IconData icon,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacingS + 4, vertical: DesignTokens.spacingXs),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.inverseSurface,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: DesignTokens.spacingS),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'monospace',
-            ),
+            color: colors.primary,
           ),
         ],
       ),
@@ -125,5 +109,63 @@ class GameHeader extends StatelessWidget {
       default:
         return 'Game in progress';
     }
+  }
+}
+
+/// Counter widget that animates when its value changes.
+class _AnimatedCounter extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final Color color;
+
+  const _AnimatedCounter({
+    required this.icon,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: DesignTokens.spacingM,
+        vertical: DesignTokens.spacingXs + 2,
+      ),
+      decoration: BoxDecoration(
+        color: colors.inverseSurface,
+        borderRadius: BorderRadius.circular(DesignTokens.radiusM),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 6),
+          AnimatedSwitcher(
+            duration: DesignTokens.animationFast,
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, -0.3),
+                  end: Offset.zero,
+                ).animate(anim),
+                child: child,
+              ),
+            ),
+            child: Text(
+              value,
+              key: ValueKey(value),
+              style: TextStyle(
+                color: color,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
